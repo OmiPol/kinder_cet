@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import rclpy,time,math,sys
+import numpy as np
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from turtlesim.msg import Pose
@@ -19,12 +20,10 @@ class Controler(Node):
       
       self.lista = [(0,0),(5,7),(7,1),(1,1)]
       self.L = 0.66
-      self.multi = 0.0
-   
+      self.multi = 0.0  
    def callback_turtle_pose(self,msg):
       self.pose = msg
       
-  
    def go_to_point(self,target_x,target_y):
       msg = Twist()
       while True:
@@ -78,9 +77,7 @@ class Controler(Node):
             rclpy.spin_once(self) #checa mensajes
             time.sleep(0.02) #Ahorra ciclos de procesamiento
   	     #print("cerca cerquita vamos")
-
-   
-   
+           
    def angleandpursuit(self,target_x,target_y):
       print("Target: x: " + str(target_x) + " y: " + str(target_y) )
       actual_x = self.pose.x
@@ -174,13 +171,32 @@ class Controler(Node):
             else:
                print("finished circle")
                break      
+       
+   def traj5(self,p0,pf,v0,vf,t0,tf):
+      matrix1=np.array([[1,t0,pow(t0,2),pow(t0,3),pow(t0,4),pow(t0,5)],
+                       [1,tf,pow(tf,2),pow(tf,3),pow(tf,4),pow(tf,5)],
+                       [0,1,2*t0,3*pow(t0,2),4*pow(t0,3),5*pow(t0,4)],
+                       [0,1,2*tf,3*pow(tf,2),4*pow(tf,3),5*pow(tf,4)],
+                       [0,0,2,6*t0,12*pow(t0,2),20*pow(t0,3)],
+                       [0,0,2,6*tf,12*pow(tf,2),20*pow(tf,3)]])
+      matrix2 = np.array([[p0],
+                         [pf],
+                         [v0],
+                         [vf],
+                         [0],
+                         [0]])
+      Inv = np.linalg.inv(matrix1)
       
-   
+      poli = np.array([0,0,0,0,0,0])
       
-
+      print(poli)
+      
+      np.matmul(Inv,matrix2,out=poli)
+      
        
    def principal(self):
      print("begin...")
+     self.traj5(-1.5708,0.6750,0.07/0.8,0.09/0.8,0,7)
      time.sleep(2)
      self.angleandpursuit(7.0,5.555)#primera linea
      self.circle_x(0.8,7.5) #primer radio
