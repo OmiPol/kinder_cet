@@ -26,7 +26,15 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "kinder_cet_node = kinder_cet.kinder_cet_node:main"
+            "kinder_cet_node = kinder_cet.kinder_cet_node:main",
+            "Odometry = kinder_cet.Odometry:main",
+            "Path_gen = kinder_cet.Path_gen:main",
+            "Puzzle_move = kinder_cet.Puzzle_move:main",
+            "Puzzlebot_PP = kinder_cet.Puzzlebot_PP :main",    
+            
+            
+            
+            
         ],
     },
 )
