@@ -25,7 +25,7 @@ class Controler(Node):
     
     #Error tolerances
     self.linTol = 0.05 #mts
-    self.angTol = 0.05 #rads
+    self.angTol = 0.06981 #rads
     
     #Desired point
     self.Xdes = 0.0 #desired x
@@ -34,6 +34,10 @@ class Controler(Node):
     #control paramters
     self.angP = 2.0  #proportional of angular error
     self.linP = 1.8 #proportional of linear error
+    
+    #flags gotopoint/angle
+    self.angR = False #angle reached
+    self.linR = False #linear reached
 
    def get_path(self,msg):
       self.Xdes = msg.x
@@ -42,7 +46,7 @@ class Controler(Node):
    def get_position(self,msg):
       self.actualPose = msg
       
-   def move(self):  
+   def move(self):  #pose pursuit doble proporcional
       msg = Twist()
       if self.actualPose is not None:
          #Error calculation
@@ -63,6 +67,33 @@ class Controler(Node):
             msg.linear.x = 0.0
             msg.angular.z =0.0
          
+         #publishing message
+         self.pub.publish(msg)
+         
+   def move2(self): #go to point go to angle 
+      msg = Twist()
+      if self.actualPose is not None:
+         #Error calculation
+         diff_x, diff_y = self.Xdes - self.actualPose.x, self.Ydes - self.actualPose.y
+         e_dist = math.sqrt(diff_x**2 + diff_y**2)
+         #print(e_dist)
+         angle_diff = np.arctan2(diff_y,diff_x)
+         angle_error = np.arctan2(math.sin(angle_diff-self.actualPose.theta),math.cos(angle_diff-self.actualPose.theta))
+         print("edist: " + str(e_dist) + "eang: " + str(angle_error))
+
+            #Checks if current position is within tolerance
+            #if it is, stop movment, if it is not, continue movement
+         if abs(angle_error) > self.angTol :
+            #saturation of max velocities
+             #msg.linear.x = max(min(self.linP * e_dist,self.linMax),-self.linMax)
+             msg.angular.z = max(min(self.angP * angle_error,self.angMax),-self.angMax)  
+         elif abs(e_dist) > self.linTol:
+            msg.linear.x = max(min(self.linP * e_dist,self.linMax),-self.linMax)
+            #msg.angular.z = max(min(self.angP * angle_error,self.angMax),-self.angMax) 
+         else:
+            msg.linear.x = 0.0
+            msg.linear.y = 0.0
+            
          #publishing message
          self.pub.publish(msg)
 

@@ -27,7 +27,7 @@ class Generator(Node):
         time = min(self.t/self.interval,1.0)
         #print(time)
         
-        msg.x = 1.0
+        msg.x = -1.0
         msg.y = -1.0
         
         self.pub.publish(msg)

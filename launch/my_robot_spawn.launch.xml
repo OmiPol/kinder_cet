@@ -6,7 +6,7 @@
  </node>
  
  
- <node pkg="rviz2" exec="rviz2" args= "-d home/omi/ros2_ws/share/robot_description/rviz/config_my_robot.rviz"/>
+ <node pkg="rviz2" exec="rviz2" args= "-d /home/omi/ros2_ws/share/robot_description/rviz/config_my_robot.rviz"/>
  
  <node pkg="learning_tf2" exec="move_my_robot"/>
 
