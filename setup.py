@@ -31,7 +31,7 @@ setup(
             "Path_gen = kinder_cet.Path_gen:main",
             "Puzzle_move = kinder_cet.Puzzle_move:main",
             "Puzzlebot_PP = kinder_cet.Puzzlebot_PP :main",    
-            
+            "motor_test = kinder_cet.motor_test:main",
             
             
             
