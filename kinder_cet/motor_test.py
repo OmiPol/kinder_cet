@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import rclpy
+import numpy as np
 import time
 from rclpy.node import Node
 from std_msgs.msg import Float32
@@ -20,6 +21,7 @@ class ListenerNode(Node):
         self.subR= self.create_subscription(Float32,"/VelocityEncR",self.callback_encR,qos_profile)
         self.subL= self.create_subscription(Float32,"/VelocityEncL",self.callback_encL,qos_profile)
         self.pub = self.create_publisher(Twist, "/cmd_vel", 1)
+        self.param = self.declare_parameter("vel",0.0)
         
         self.timer = self.create_timer(0.05,self.data_callback,)
         self.get_logger().info('Nodo Listener iniciado, esperando mensajes...')
@@ -30,7 +32,8 @@ class ListenerNode(Node):
         #Variables de tiempo real
         self.r_vel = 0.0
         self.l_vel = 0.0
-        self.des_vel = 1.6
+        ###################
+        self.des_vel = self.param.value
         self.dr_vel, self.dl_vel = [self.des_vel,self.des_vel]
         
         
@@ -57,17 +60,20 @@ class ListenerNode(Node):
     
     def data_callback(self):
         elapsed_time = time.time()- self.start_time 
-        print(elapsed_time)
+
         if elapsed_time >= self.test_time:
             msg = Twist()
             linear_vel = 0.0
             msg.linear.x = linear_vel
             self.pub.publish(msg)
-            self.get_logger().info('CREATING CS FILE FOR ENCODERS DATA.')
-            self.save_to_csv()
-            print("Node (presumably) killing itself")
+            
+            
+            #self.get_logger().info('CREATING CS FILE FOR ENCODERS DATA.')
+            #self.save_to_csv()
+            self.calcstd()
+            #print("Node (presumably) killing itself")
             self.destroy_node()
-            print("If you are reading this, the node is still alive")
+            #print("If you are reading this, the node is still alive")
             return 
 
         
@@ -75,14 +81,28 @@ class ListenerNode(Node):
         linear_vel = (self.R*(self.dr_vel+self.dl_vel))/2
         msg.linear.x = linear_vel
         self.pub.publish(msg)
-            
-        self.encoder_r_values.append(self.r_vel)
-        self.encoder_l_values.append(self.l_vel)
-        self.desired_r_values.append(self.dr_vel)
-        self.desired_l_values.append(self.dl_vel)
-        self.timestamp.append(round(elapsed_time,3))
+        if elapsed_time > 2.0:
+            #print(elapsed_time)
+            self.encoder_r_values.append(self.r_vel)
+            self.encoder_l_values.append(self.l_vel)
+            self.desired_r_values.append(self.dr_vel)
+            self.desired_l_values.append(self.dl_vel)
+            self.timestamp.append(round(elapsed_time,3))
 
+    def calcstd(self):
+        desvr = np.std(self.encoder_r_values)
+        desvl = np.std(self.encoder_l_values)
+        print("Wheel Volocity: "  + str(self.des_vel))
+        print("Lin. Vel: " + str((self.R*(self.dr_vel+self.dl_vel))/2))
+        print("-----------")
+        print("Std. dev r: " + str(desvr))
+        print("Std. dev l: " + str(desvl))
+        print("-----------")
+        print("Std. dev² r: " + str(desvr**2))
+        print("Std. dev² l: " + str(desvl**2))
+        
 
+        
 
 
     def save_to_csv(self):
