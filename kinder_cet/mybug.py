@@ -39,14 +39,14 @@ class BugAlgorithClass(Node):
         self.histerisis = 0.1
         
         #control paramters
-        self.angP = 2.0  #proportional of angular error
-        self.linP = 1.8 #proportional of linear error  
+        self.angP = 0.3 #proportional of angular error
+        self.linP = 0.1 #proportional of linear error  
         
         self.linMax = 0.1 #m/s
-        self.angMax = 0.3 #rad/s 
+        self.angMax = 0.2 #rad/s 
         
         #Follow wall parameters
-        self.Dwall = 0.4
+        self.Dwall = 0.25
         self.beta = 0.75
         self.Kfw = 0.99 #ganancia follow wall
         

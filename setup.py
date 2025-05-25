@@ -33,7 +33,8 @@ setup(
             "Puzzlebot_PP = kinder_cet.Puzzlebot_PP :main",    
             "motor_test = kinder_cet.motor_test:main",
             "mybug = kinder_cet.mybug:main",
-            "odom2 = kinder_cet.Odometry_param:main"
+            "odom2 = kinder_cet.Odometry_param:main",
+            "test_lidar = kinder_cet.test_lidar:main"
             
             
             

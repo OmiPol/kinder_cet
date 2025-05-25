@@ -56,7 +56,9 @@ class Odometry_node(Node):
         self.Diam =2*self.R #diametro de la llanta
        
         #Variables de tiempo real
-        self.tin = 0.0 #tiempo inicial
+        self.tin =time.time()
+        #Simulación
+        # self.tin = 0.0 #tiempo inicial
         self.tfin = 0.0 #Tiempo final
         
         self.LinVel = 0.0
@@ -109,7 +111,10 @@ class Odometry_node(Node):
         
     def odometry_callback(self):
         
-        self.tfin = self.tiempo
+        #Simulación 
+        #self.tfin = self.tiempo
+        #Real
+        self.tfin = time.time()
         msg=Pose()
         
         msg2 = Odometry()
@@ -220,6 +225,9 @@ class Odometry_node(Node):
         
         self.pub3.publish(msg2)
         self.tin = self.tfin#actualiza valor de intervalo
+
+        print("X: " +str(self.x))
+        print("Y: " + str(self.y))
             
 
 def main(args=None):
