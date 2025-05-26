@@ -289,7 +289,7 @@ class Odometry_node(Node):
                     estado = estado + Kk @ error_pred
 
                     #Correción de incertidumbre
-                    self.E = self.E - Kk 
+                    self.E = self.E - Kk @ G @ self.E
                  
 
             
