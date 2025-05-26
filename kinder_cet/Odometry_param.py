@@ -6,8 +6,10 @@ from turtlesim.msg import Pose
 from geometry_msgs.msg import  Twist
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32
-from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from rosgraph_msgs.msg import Clock
+from aruco_opencv_msgs.msg import ArucoDetection
+from tf_transformations import quaternion_matrix
 
 
 
@@ -29,7 +31,7 @@ class Odometry_node(Node):
         #TO DO: Change single topic 2 one topic for each velocity
         self.subR= self.create_subscription(Float32,"/VelocityEncR",self.callback_encR,qos_profile)
         self.subL= self.create_subscription(Float32,"/VelocityEncL",self.callback_encL,qos_profile)
-        
+        self.subAr = self.create_subscription(ArucoDetection,"/aruco_detections",self.aruco_callback,1)
         self.t0 = self.get_clock().now()
     
         self.cmdvel = self.create_subscription(Twist,self.namespace+ "/cmd_vel",self.get_req_velocities,1)
@@ -77,13 +79,41 @@ class Odometry_node(Node):
         #Tiempo no real
         self.tiempo = 0.0
         
+
+        #Arucos
+        self.Detected_AR = []
+        self.arucodict = {
+            "0":  [4.0,0.0],
+            "1":  [1.6464, -2.6464],
+            "2":  [0.925,0.0],
+            "3":  [0.0, 4.0],
+            "4":  [0.0, -4.0],
+            "5":  [-4.0, 0.0],
+            "6":  [1.075, 0.0],
+            "7":  [-2.31996, 0.4594],
+            "8":  [-2.5379, 1.6768],
+            "9":  [-1.4336, -1.4504],
+            "10": [-0.4928, -1.5174]
+        }
+
+        self.trans = np.array([
+                [0.0, 0.0, 1.0, 0.07],
+                [-1.0, 0.0, 0.0, 0.0],
+                [0.0, -1.0, 0.0, 0.08],
+                [0.0, 0.0, 0.0, 1.0]
+            ])
       
         #Matriz de incertidubmre
         
-        self.E = np.array([[1.0, 0.0, 0.0 ],
+        self.E = np.array(
+            [[1.0, 0.0, 0.0 ],
              [0.0, 1.0, 0.0 ],
              [0.0, 0.0, 1.0 ]])
         
+        self.Rk = np.array([
+              [0.0105, 0.00001],
+              [0.00001, 13.3455]  
+            ])
         #mensajes de simulación
      
     def get_time(self,msg):
@@ -92,6 +122,11 @@ class Odometry_node(Node):
         nano = float(msg._clock.nanosec)/1000000000.0
         self.tiempo = sec + nano
         
+    def aruco_callback(self,msg):
+        self.Detected_AR = []
+        for i in range(len(msg.markers)):
+            self.Detected_AR.append(msg[i])
+        pass
            
         
     def callback_encR(self,msg):  
@@ -149,32 +184,28 @@ class Odometry_node(Node):
             self.theta = theta
             
             
-            #CALCULO DE MATRIZ Q = Lambda * sigma * Lambda transpuesta
-            
-            #Q = [[(0.25 * self.R**2 * delta**2 * (self.kl * abs(wL)+ self.kr * abs(wR))*math.cos(self.theta)**2), (0.125 * self.R**2 * delta**2 * (self.kl * abs(wL)+ self.kr * abs(wR))*math.sin(2*self.theta)),(self.R**2 * delta**2 * (-self.kl * abs(wL)+ self.kr * abs(wR))*math.cos(self.theta))/2*self.L],
-            #     [(0.125 * self.R**2 * delta**2 * (self.kl * abs(wL)+ self.kr * abs(wR))*math.sin(2*self.theta)),(0.25 * self.R**2 * delta**2 * (self.kl * abs(wL)+ self.kr * abs(wR))*math.sin(self.theta)**2),(self.R**2 * delta**2 * (-self.kl * abs(wL)+ self.kr * abs(wR))*math.sin(self.theta))/2*self.L],
-            #     [(self.R**2 * delta**2 * (-self.kl * abs(wL)+ self.kr * abs(wR))*math.cos(self.theta))/2*self.L,(self.R**2 * delta**2 * (-self.kl * abs(wL)+ self.kr * abs(wR))*math.sin(self.theta))/2*self.L,(self.R**2 * delta**2 * (self.kl * abs(wL)+ self.kr * abs(wR)))/self.L**2]]
-            
-            #SAN CHAT
-            
-            # Definición de variables simbólicas
-
-            #La otra cosa
             
     
  
-            #print("lo logre")
+            #Constantes
+
             sigma = np.array([   
                 [self.kr*abs(self.wR), 0.0],
                 [0.0, self.kl*abs(self.kl)]    
             ])
+
             
-            delgrad = np.array(((self.R*delta)/(2))*np.array([
+
+            
+
+            #Paso predictivo
+            #Gradiente (Delta al revés)
+            delgrad = np.array(
+                ((self.R*delta)/(2))*np.array([
                 [math.cos(self.theta), math.cos(self.theta)],
                 [math.sin(self.theta), math.sin(self.theta)],
                 [2/self.D, -2/self.D]
             ]))
-            #print("voa hacer la sumacion")
             
             Qk = delgrad@sigma@delgrad.T
             
@@ -185,6 +216,82 @@ class Odometry_node(Node):
             ])
             
             self.E = H@self.E@H.T + Qk
+
+
+            #Paso de correción
+            if len(self.Detected_AR) != 0:
+                
+                puzzle_trans = np.array([
+                    [math.cos(self.theta), -math.sin(self.theta), 0.0, self.x],
+                    [math.sin(self.theta), math.cos(self.theta), 0.0, self.y],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0]
+                ])
+
+                estado = np.array([
+                    [self.x],
+                    [self.y],
+                    [self.theta]
+                ])
+
+                for i in range(len(self.Detected_AR)):
+                    id = self.arucodict[self.Detected_AR[i].id]
+
+
+
+                    vector = np.array([
+                        [self.Detected_AR[i].pose.position.x],
+                        [self.Detected_AR[i].pose.position.y],
+                        [self.Detected_AR[i].pose.position.z],
+                        [1]
+                    ])
+
+                    rotation = quaternion_matrix(self.Detected_AR[i].orientation)
+
+                    reference_aruco = np.array([
+                        [rotation[0,0],rotation[0,1],rotation[0,2],vector[0][0]],
+                        [rotation[1,0],rotation[1,1],rotation[1,2],vector[0][1]],
+                        [rotation[2,0],rotation[2,1],rotation[2,2],vector[0][2]],
+                        [0.0, 0.0, 0.0, 1.0]
+                    ])
+
+                    #Aruco con relación al puzzlebot     
+                    ar_puzzle = self.trans@reference_aruco
+
+                    yaw = math.atan2(ar_puzzle[1][0], ar_puzzle[0][0])
+
+                    deltax = self.arucodict[id][0] - self.x
+                    deltay = self.arucodict[id][1] - self.y
+
+                    g = np.array([
+                        [math.hypot(deltax, deltay)],
+                        [math.atan2(deltay, deltax)-self.theta]  
+
+                    ])
+                    
+                    G = np.array([
+                        [-deltax/math.hypot(deltax,deltay),  -deltay/math.hypot(deltax,deltay),    0.0],
+                        [deltay/(deltax ** 2 + deltay ** 2), -deltax/(deltax ** 2 + deltay ** 2), -1  ]
+                    ])
+
+                    #PASO 1 Calcular la ganancia de Kalman
+                    inter = G @ self.E @ G.T + self.Rk
+                    Kk = self.E @ G.T @ np.linalg.inv(inter)
+
+
+                    #Correción del estado
+                    zik = np.array([
+                        [math.hypot(ar_puzzle[0][0], ar_puzzle[1][0])],
+                        [yaw]
+                    ])
+
+                    error_pred = zik - g
+                    estado = estado + Kk @ error_pred
+
+                    #Correción de incertidumbre
+                    self.E = self.E - Kk 
+                 
+
             
         msg.x = self.x
         msg.y = self.y
