@@ -155,7 +155,7 @@ class Odometry_node(Node):
         
         if True:
           
-            print("corrigiendo")
+            
             
             delta = self.tfin - self.tin #calcula delta
 
@@ -230,19 +230,6 @@ class Odometry_node(Node):
                             [1]
                         ])
 
-
-
-                        rotation = quaternion_matrix([self.Detected_AR[i].pose.orientation.x, self.Detected_AR[i].pose.orientation.y, self.Detected_AR[i].pose.orientation.z, self.Detected_AR[i].pose.orientation.w])
-                        #print("matriz de rotación calculada")
-                        reference_aruco = np.array([
-                            [rotation[0,0],rotation[0,1],rotation[0,2],vector[0][0]],
-                            [rotation[1,0],rotation[1,1],rotation[1,2],vector[1][0]],
-                            [rotation[2,0],rotation[2,1],rotation[2,2],vector[2][0]],
-                            [0.0, 0.0, 0.0, 1.0]
-                        ])
-                        #print("cree matriz de reference_aruco")
-                        #Aruco con relación al puzzlebot     
-                        ar_puzzle = puzzle_trans@self.trans@reference_aruco
                         vector_puzzle = self.trans @ vector
                         
 
@@ -333,6 +320,7 @@ class Odometry_node(Node):
         msg2.pose.pose.orientation.w = q[3]
         
         self.pub3.publish(msg2)
+        self.Detected_AR = []
 
         self.tin = self.tfin#actualiza valor de intervalo
 
