@@ -68,8 +68,8 @@ class Odometry_node(Node):
         self.AngVel = 0.0
         
         #Ganancias de incertidumbre:
-        self.kr = 0.0232
-        self.kl = 0.019
+        self.kr = 0.5
+        self.kl = 0.5
         
         self.wR = 0.0
         self.wL = 0.0

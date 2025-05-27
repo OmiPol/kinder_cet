@@ -265,7 +265,7 @@ class BugAlgorithClass(Node):
             #States
             if self.state == "stop_robot": self.stop_robot()
             if self.state == "go_to_goal": self.go_to_goal()
-            if self.state == "follow_wall": self.follow_wall("left")
+            if self.state == "follow_wall": self.follow_wall("right")
 
 			#Transitions
             if self.state == "stop_robot" and self.gotNewTarget(): self.state = "go_to_goal"

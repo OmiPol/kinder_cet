@@ -105,11 +105,7 @@
       <pose>1.6464 -2.6464 0.075 0 0 2.3592</pose>
     </include>
     
-    <include>
-      <name>aruco_marker_2</name>
-      <uri>model://aruco_marker_2</uri>
-      <pose>0.925 0 0.075 0 0 3.1416</pose>
-    </include>
+     	
     
     <include>
       <name>aruco_marker_3</name>
@@ -123,17 +119,7 @@
       <pose>0 -4 0.075 0 0 1.5708</pose>
     </include>
     
-    <include>
-      <name>aruco_marker_5</name>
-      <uri>model://aruco_marker_5</uri>
-      <pose>-4 0 0.075 0 0 0</pose>
-    </include>
     
-    <include>
-      <name>aruco_marker_6</name>
-      <uri>model://aruco_marker_6</uri>
-      <pose>1.085 0 0.075 0 0 0</pose>
-    </include>
     
     <include>
       <name>aruco_marker_7</name>
@@ -147,11 +133,7 @@
       <pose>-2.5379 1.6768 0.075 0 0 0.165</pose>
     </include>
     
-    <include>
-      <name>aruco_marker_9</name>
-      <uri>model://aruco_marker_9</uri>
-      <pose>-1.4336 -1.4504 0.075 0 0 2.2424</pose>
-    </include>
+    
     
     <include>
       <name>aruco_marker_10</name>
