@@ -68,8 +68,8 @@ class Odometry_node(Node):
         self.AngVel = 0.0
         
         #Ganancias de incertidumbre:
-        self.kr = 0.5
-        self.kl = 0.5
+        self.kr = 0.1
+        self.kl = 0.1
         
         self.wR = 0.0
         self.wL = 0.0
@@ -231,52 +231,56 @@ class Odometry_node(Node):
                         ])
 
                         vector_puzzle = self.trans @ vector
-                        
 
-                        deltax = self.arucodict[id][0] - self.estado[0][0]
-                        deltay = self.arucodict[id][1] - self.estado[1][0]
-
-                        g = np.array([
-                            [math.hypot(deltax, deltay)],
-                            [math.atan2(deltay, deltax)-self.estado[2][0]]  
-
-                        ])
-                        
-                        G = np.array([
-                            [-deltax/math.hypot(deltax,deltay),  -deltay/math.hypot(deltax,deltay),    0.0],
-                            [deltay/(deltax ** 2 + deltay ** 2), -deltax/(deltax ** 2 + deltay ** 2), -1  ]
-                        ])
-                        #print("finished declaring matrices")
-                        #PASO 1 Calcular la ganancia de Kalman
-                        inter = G @ self.E @ G.T + self.Rk
-                        Kk = self.E @ G.T @ np.linalg.inv(inter)
-
-
-                        #Correción del estado
-                        #zik = np.array([
-                        #    [math.hypot(vector[1][0], vector[2][0])],
-                        #    [math.atan2(vector[1][0],vector[2][0])]
-                        #])
-                        
                         zik = np.array([
                             [math.hypot(vector_puzzle[0][0], vector_puzzle[1][0])],
                             [math.atan2(vector_puzzle[1][0],vector_puzzle[0][0])]
                         ])
-                        print("-------------")
-                        print("estimación de medida")
-                        print(g)
-                        print("---------------")
-                        print("medida real")
-                        print(zik)
-                        print("-----------------")
-                        print("error")
-                        error_pred = zik - g
-                        print(error_pred)
-                        print("--------------------")
-                        self.estado = self.estado + Kk @ error_pred
 
-                        #Correción de incertidumbre
-                        self.E = self.E - Kk @ G @ self.E
+                        if zik[0][0] <= 3.0:
+                        
+
+                            deltax = self.arucodict[id][0] - self.estado[0][0]
+                            deltay = self.arucodict[id][1] - self.estado[1][0]
+
+                            g = np.array([
+                                [math.hypot(deltax, deltay)],
+                                [math.atan2(deltay, deltax)-self.estado[2][0]]  
+
+                            ])
+                            
+                            G = np.array([
+                                [-deltax/math.hypot(deltax,deltay),  -deltay/math.hypot(deltax,deltay),    0.0],
+                                [deltay/(deltax ** 2 + deltay ** 2), -deltax/(deltax ** 2 + deltay ** 2), -1  ]
+                            ])
+                            #print("finished declaring matrices")
+                            #PASO 1 Calcular la ganancia de Kalman
+                            inter = G @ self.E @ G.T + self.Rk
+                            Kk = self.E @ G.T @ np.linalg.inv(inter)
+
+
+                            #Correción del estado
+                            #zik = np.array([
+                            #    [math.hypot(vector[1][0], vector[2][0])],
+                            #    [math.atan2(vector[1][0],vector[2][0])]
+                            #])
+                            
+                            
+                            print("-------------")
+                            print("estimación de medida")
+                            print(g)
+                            print("---------------")
+                            print("medida real")
+                            print(zik)
+                            print("-----------------")
+                            print("error")
+                            error_pred = zik - g
+                            print(error_pred)
+                            print("--------------------")
+                            self.estado = self.estado + Kk @ error_pred
+
+                            #Correción de incertidumbre
+                            self.E = self.E - Kk @ G @ self.E
                  
 
             

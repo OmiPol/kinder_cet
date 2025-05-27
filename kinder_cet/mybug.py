@@ -35,18 +35,18 @@ class BugAlgorithClass(Node):
         
         #Misc
         self.tolerance_to_target = 0.05   
-        self.allowed_distance_to_obstacle = 0.40 
+        self.allowed_distance_to_obstacle = 0.40
         self.histerisis = 0.1
         
         #control paramters
         self.angP = 0.3 #proportional of angular error
-        self.linP = 0.1 #proportional of linear error  
+        self.linP = 0.2 #proportional of linear error  
         
         self.linMax = 0.1 #m/s
         self.angMax = 0.2 #rad/s 
         
         #Follow wall parameters
-        self.Dwall = 0.25
+        self.Dwall = 0.40
         self.beta = 0.75
         self.Kfw = 0.99 #ganancia follow wall
         
@@ -117,8 +117,15 @@ class BugAlgorithClass(Node):
         self.current_pose = [x,y,yaw]
     
     def move_robot(self,v,w):
+
+        v = min(self.linMax,max(v,-self.linMax))
+        w = min(self.angMax,max(w,-self.angMax))
+        print(v)
+        print(w)
         self.msg1.linear.x = v
         self.msg1.angular.z = w
+
+
         self.pub.publish(self.msg1)
         
     def stop_robot(self):
@@ -180,7 +187,11 @@ class BugAlgorithClass(Node):
         angle_tan = math.atan2(NormTan[1], NormTan[0])
         fw_angle = self.beta * angle_tan + (1 - self.beta) * angle_per
         fw_angle = math.atan2(math.sin(fw_angle), math.cos(fw_angle)) #obtener distancia mas corta del angulo
-        v = 0.1 if abs(fw_angle) > 0.1 else 0.1
+        #v = 0.1 if abs(fw_angle) > 0.1 else 0.04
+        if abs(fw_angle) > 0.1:
+            v = 0.04
+        else:
+            v = 0.1
         w = self.Kfw * fw_angle
         #print("distance to wall: " +str(hypPer) + " fw_angle: " + str(fw_angle))
         msg = String()
@@ -196,11 +207,11 @@ class BugAlgorithClass(Node):
         Ex =self.target_pose[0] - self.current_pose[0]
         Ey = self.target_pose[1] - self.current_pose[1]
         distance_to_target = math.hypot(Ex,Ey)
-        print('\x1b[2k', end='\r')
-        print("Distance to target = " + str(distance_to_target), end = '\r')
+        #print('\x1b[2k', end='\r')
+        #print("Distance to target = " + str(distance_to_target), end = '\r')
 
         if distance_to_target < self.tolerance_to_target:
-            print("\nArrived to target")
+            #print("\nArrived to target")
             self.first_time_flag = True
             self.target_pose = []
             self.got_new_target = False
@@ -210,7 +221,7 @@ class BugAlgorithClass(Node):
             
     def avoid_obstacle(self):
         if self.first_time_flag == True: 
-            print("Avoiding Obstacle")
+            #print("Avoiding Obstacle")
             self.first_time_flag = False
         
         angles = [90,45,0,-45,-90]
@@ -234,7 +245,7 @@ class BugAlgorithClass(Node):
                         self.robotView.get("front"),
                         self.robotView.get("front_right"),
         ]
-        if min(readings) <= self.allowed_distance_to_obstacle - self.histerisis:
+        if min(readings) <= self.allowed_distance_to_obstacle:
             return True
         else: return False
         
@@ -265,15 +276,18 @@ class BugAlgorithClass(Node):
             #States
             if self.state == "stop_robot": self.stop_robot()
             if self.state == "go_to_goal": self.go_to_goal()
-            if self.state == "follow_wall": self.follow_wall("right")
+            if self.state == "follow_wall_left": self.follow_wall("left")
+            if self.state == "follow_wall_right": self.follow_wall("right")
 
 			#Transitions
             if self.state == "stop_robot" and self.gotNewTarget(): self.state = "go_to_goal"
             if self.state == "go_to_goal" and self.atTarget(): self.state = "stop_robot"
-            if self.state == "go_to_goal" and self.isObstacleTooClose(): self.state = "follow_wall"
-            if self.state == "follow_wall" and self.mLineAgainWithProgress(): self.state = "go_to_goal"
+            if self.state == "go_to_goal" and self.isObstacleTooClose(): self.state = "follow_wall_left" 
+            #if self.state == "go_to_goal" and self.isObstacleTooClose() and (self.robotView.get("front_right") < self.robotView.get("front_left") ): self.state = "follow_wall_right" 
+            if self.state == "follow_wall_left" and self.mLineAgainWithProgress(): self.state = "go_to_goal"
+            if self.state == "follow_wall_right" and self.mLineAgainWithProgress(): self.state = "go_to_goal"
             msg = String()
-            msg.data = self.state #+ str(self.robotView)
+            msg.data = self.state + str(self.isObstacleTooClose())
             self.state_pub.publish(msg)
             #print(self.gotNewTarget())
             
