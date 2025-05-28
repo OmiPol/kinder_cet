@@ -31,7 +31,10 @@ class BugAlgorithClass(Node):
               
         #Maquina de estados
         self.state = "stop_robot"
+        self.next_state = self.state
         self.first_time_flag = True
+        self.wall_following_direction = "left"
+        self.closest_dist_to_goal_on_wall = float('inf')
         
         #Misc
         self.tolerance_to_target = 0.05   
@@ -120,8 +123,6 @@ class BugAlgorithClass(Node):
 
         v = min(self.linMax,max(v,-self.linMax))
         w = min(self.angMax,max(w,-self.angMax))
-        print(v)
-        print(w)
         self.msg1.linear.x = v
         self.msg1.angular.z = w
 
@@ -266,30 +267,56 @@ class BugAlgorithClass(Node):
             return True
         else:
             return False
-         
+        
+    def choose_follow_direction(self):
+        if self.robotView.get("front_right") < self.robotView.get("front_left"):
+            return "right"
+        else:
+            return "left"
     
          
        
     def stateMachine(self):
-        if len(self.current_pose) > 0 and len(self.robotView) > 0: 
+        if len(self.current_pose) > 0 and len(self.robotView) > 0:
 
-            #States
-            if self.state == "stop_robot": self.stop_robot()
-            if self.state == "go_to_goal": self.go_to_goal()
-            if self.state == "follow_wall_left": self.follow_wall("left")
-            if self.state == "follow_wall_right": self.follow_wall("right")
+            # Ejecutar acción según estado
+            if self.state == "stop_robot":
+                self.stop_robot()
+            elif self.state == "go_to_goal":
+                self.go_to_goal()
+            elif self.state == "follow_wall_left":
+                self.follow_wall("left")
+            elif self.state == "follow_wall_right":
+                self.follow_wall("right")
 
-			#Transitions
-            if self.state == "stop_robot" and self.gotNewTarget(): self.state = "go_to_goal"
-            if self.state == "go_to_goal" and self.atTarget(): self.state = "stop_robot"
-            if self.state == "go_to_goal" and self.isObstacleTooClose(): self.state = "follow_wall_left" 
-            #if self.state == "go_to_goal" and self.isObstacleTooClose() and (self.robotView.get("front_right") < self.robotView.get("front_left") ): self.state = "follow_wall_right" 
-            if self.state == "follow_wall_left" and self.mLineAgainWithProgress(): self.state = "go_to_goal"
-            if self.state == "follow_wall_right" and self.mLineAgainWithProgress(): self.state = "go_to_goal"
+            # Transiciones
+            if self.state == "stop_robot" and self.gotNewTarget():
+                self.next_state = "go_to_goal"
+
+            elif self.state == "go_to_goal":
+                if self.atTarget():
+                    self.next_state = "stop_robot"
+                elif self.isObstacleTooClose():
+                    self.closest_dist_to_goal_on_wall = math.hypot(
+                        self.current_pose[0] - self.PointGoal[0],
+                        self.current_pose[1] - self.PointGoal[1]
+                    )
+                    self.wall_following_direction = self.choose_follow_direction()
+                    self.next_state = f"follow_wall_{self.wall_following_direction}"
+
+            elif self.state in ["follow_wall_left", "follow_wall_right"]:
+                if self.mLineAgainWithProgress():
+                    self.next_state = "go_to_goal"
+
+            # Aplicar transición
+            if self.next_state != self.state:
+                self.state = self.next_state
+                self.first_time_flag = True
+
+            # Publicar estado actual
             msg = String()
-            msg.data = self.state + str(self.isObstacleTooClose())
+            msg.data = self.state
             self.state_pub.publish(msg)
-            #print(self.gotNewTarget())
             
 
         

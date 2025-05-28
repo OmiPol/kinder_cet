@@ -68,8 +68,8 @@ class Odometry_node(Node):
         self.AngVel = 0.0
         
         #Ganancias de incertidumbre:
-        self.kr = 0.1
-        self.kl = 0.1
+        self.kr = -0.1137
+        self.kl = -0.0935
         
         self.wR = 0.0
         self.wL = 0.0
@@ -105,15 +105,15 @@ class Odometry_node(Node):
             ])
       
         #Matriz de incertidubmre
-        
+        #Matriz semilla
         self.E = np.array(
-            [[1.0, 0.0, 0.0 ],
-             [0.0, 1.0, 0.0 ],
+            [[0.09836, 0.0, 0.0 ],
+             [0.0, 0.1363, 0.0 ],
              [0.0, 0.0, 1.0 ]])
-        
+        #Matriz de incertidumbre Camara
         self.Rk = np.array([
               [0.0105, 0.0],
-              [0.0, 1.3455]  
+              [0.0, 13.455]  
             ])
         #mensajes de simulación
      
@@ -165,7 +165,9 @@ class Odometry_node(Node):
             
             #update de datos de posición
             
-            theta = (self.estado[2][0]) + (delta * self.AngVel)     
+            theta = (self.estado[2][0]) + (delta * self.AngVel)
+            #noramlización de angulo
+            theta = math.atan2(math.sin(theta), math.cos(theta))     
             x = (self.estado[0][0]) + (delta * self.LinVel * math.cos(theta))
             y = (self.estado[1][0]) + (delta * self.LinVel * math.sin(theta))
             
@@ -173,23 +175,23 @@ class Odometry_node(Node):
     
  
             #Constantes
-
+            #Matriz de covarianza motores
             sigma = np.array([   
                 [self.kr*abs(self.wR), 0.0],
-                [0.0, self.kl*abs(self.kl)]    
+                [0.0, self.kl*abs(self.wL)]    
             ])
             
 
             #Paso predictivo
             #Gradiente (Delta al revés)
-            delgrad = np.array(
+            nabla = np.array(
                 ((self.R*delta)/(2))*np.array([
                 [math.cos(self.estado[2][0]), math.cos(self.estado[2][0])],
                 [math.sin(self.estado[2][0]), math.sin(self.estado[2][0])],
                 [2/self.D, -2/self.D]
             ]))
             
-            Qk = delgrad@sigma@delgrad.T
+            Qk = nabla @ sigma @ nabla.T
             
             H = np.array([
                 [1.0, 0.0, -delta*self.LinVel*math.sin(self.estado[2][0])],
@@ -197,7 +199,9 @@ class Odometry_node(Node):
                 [0.0, 0.0, 1.0]
             ])
             
-            self.E = H@self.E@H.T + Qk
+            self.E = (H@self.E@H.T) + Qk
+
+
             self.estado[0][0] = x
             self.estado[1][0] = y
             self.estado[2][0] = theta
@@ -206,13 +210,6 @@ class Odometry_node(Node):
             
             #Paso de correción
             if self.Detected_AR is not None:
-                #no se usa
-                puzzle_trans = np.array([
-                    [math.cos(self.estado[2][0]), math.sin(self.estado[2][0]), 0.0, self.estado[0][0]],
-                    [-math.sin(self.estado[2][0]), math.cos(self.estado[2][0]), 0.0, self.estado[1][0]],
-                    [0.0, 0.0, 1.0, 0.0],
-                    [0.0, 0.0, 0.0, 1.0]
-                ])
 
                 
           #      print("starting iterations")
@@ -220,7 +217,6 @@ class Odometry_node(Node):
 
            #         print("entered_iteration")
                     id = self.Detected_AR[i].marker_id
-            #        print("hize id y mal escribido")
                     
                     if(id <= 10):
                         vector = np.array([
@@ -237,15 +233,17 @@ class Odometry_node(Node):
                             [math.atan2(vector_puzzle[1][0],vector_puzzle[0][0])]
                         ])
 
-                        if zik[0][0] <= 3.0:
+                        if zik[0][0] <= 10.0:
                         
 
                             deltax = self.arucodict[id][0] - self.estado[0][0]
                             deltay = self.arucodict[id][1] - self.estado[1][0]
+                            g_ang_dif = math.atan2(deltay, deltax)-self.estado[2][0]
+
 
                             g = np.array([
                                 [math.hypot(deltax, deltay)],
-                                [math.atan2(deltay, deltax)-self.estado[2][0]]  
+                                [math.atan2(math.sin(g_ang_dif),math.cos(g_ang_dif))]  
 
                             ])
                             
@@ -255,32 +253,35 @@ class Odometry_node(Node):
                             ])
                             #print("finished declaring matrices")
                             #PASO 1 Calcular la ganancia de Kalman
-                            inter = G @ self.E @ G.T + self.Rk
+                            inter = (G @ self.E @ G.T) + self.Rk
+
                             Kk = self.E @ G.T @ np.linalg.inv(inter)
 
 
-                            #Correción del estado
+                            # PASO 2: Correción del estado
                             #zik = np.array([
                             #    [math.hypot(vector[1][0], vector[2][0])],
                             #    [math.atan2(vector[1][0],vector[2][0])]
                             #])
                             
                             
-                            print("-------------")
+                            error_pred = zik - g
+
+                            
+                            self.estado = self.estado + (Kk @ error_pred)
+
+                            print("------" + str(id) +  "-------")
                             print("estimación de medida")
                             print(g)
-                            print("---------------")
-                            print("medida real")
+                            print("--------Medida real-------")
                             print(zik)
-                            print("-----------------")
-                            print("error")
-                            error_pred = zik - g
+                            print("-------Error----------")
                             print(error_pred)
-                            print("--------------------")
-                            self.estado = self.estado + Kk @ error_pred
+                            print("---------Correción-----------")
+                            print(Kk @ error_pred)
 
-                            #Correción de incertidumbre
-                            self.E = self.E - Kk @ G @ self.E
+                            # Paso 3: Correción de incertidumbre
+                            self.E = self.E - (Kk @ G @ self.E)
                  
 
             

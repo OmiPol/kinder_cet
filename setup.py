@@ -34,7 +34,10 @@ setup(
             "motor_test = kinder_cet.motor_test:main",
             "mybug = kinder_cet.mybug:main",
             "odom2 = kinder_cet.Odometry_param:main",
-            "test_lidar = kinder_cet.test_lidar:main"
+            "test_lidar = kinder_cet.test_lidar:main",
+            "odomc = kinder_cet.chatometria:main",
+            "robug = kinder_cet.robot_bug:main"
+
             
             
             
