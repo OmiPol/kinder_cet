@@ -36,7 +36,8 @@ setup(
             "odom2 = kinder_cet.Odometry_param:main",
             "test_lidar = kinder_cet.test_lidar:main",
             "odomc = kinder_cet.chatometria:main",
-            "robug = kinder_cet.robot_bug:main"
+            "robug = kinder_cet.robot_bug:main",
+            "odom3 = kinder_cet.kalman_on_steroids:main"
 
             
             
