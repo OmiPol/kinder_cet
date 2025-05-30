@@ -38,8 +38,10 @@ class BugAlgorithClass(Node):
         
         #Misc
         self.tolerance_to_target = 0.05   
-        self.allowed_distance_to_obstacle = 0.40
-        self.histerisis = 0.1
+        self.tolerance_to_line = 0.15
+        self.allowed_distance_to_obstacle = 0.30
+
+        self.histerisis = 0.05
         
         #control paramters
         self.angP = 0.3 #proportional of angular error
@@ -49,7 +51,7 @@ class BugAlgorithClass(Node):
         self.angMax = 0.2 #rad/s 
         
         #Follow wall parameters
-        self.Dwall = 0.40
+        self.Dwall = 0.35
         self.beta = 0.75
         self.Kfw = 0.99 #ganancia follow wall
         
@@ -101,11 +103,7 @@ class BugAlgorithClass(Node):
 
         new_target = [msg.x,msg.y,msg.theta]
         self.PointGoal = [msg.x, msg.y]
-        self.PointStart = [self.current_pose[0], self.current_pose[1]]
-        self.Distance2Goal = abs(math.hypot(self.PointGoal[0]-self.PointStart[0], self.PointGoal[1]-self.PointStart[1]))
-        self.a = self.PointGoal[1] - self.PointStart[1]
-        self.b = -(self.PointGoal[0] - self.PointStart[0])
-        self.c = self.PointGoal[1] * self.PointStart[0] - self.PointGoal[0] * self.PointStart[1]
+        
         if len(self.target_pose) == 0 or self.target_pose != new_target:
             self.target_pose = new_target 
             self.got_new_target = True
@@ -136,6 +134,9 @@ class BugAlgorithClass(Node):
             self.first_time_flag = False
         
     def go_to_goal(self):
+        if self.first_time_flag == True: 
+            print("Goin' to goal")
+            self.first_time_flag = False
          #Error calculation
         Ex =self.target_pose[0] - self.current_pose[0]
         Ey = self.target_pose[1] - self.current_pose[1]
@@ -160,6 +161,13 @@ class BugAlgorithClass(Node):
     def follow_wall(self,direction):
         if self.first_time_flag == True: 
             print("Follow Wall")
+            self.PointStart = [self.current_pose[0], self.current_pose[1]]
+            self.Distance2Goal = abs(math.hypot(self.PointGoal[0]-self.PointStart[0], self.PointGoal[1]-self.PointStart[1]))
+            self.a = self.PointGoal[1] - self.PointStart[1]
+            self.b = -(self.PointGoal[0] - self.PointStart[0])
+            self.c = self.PointGoal[1] * self.PointStart[0] - self.PointGoal[0] * self.PointStart[1]
+
+            print(self.PointStart)
             self.first_time_flag = False
         
         if direction == "left":
@@ -262,8 +270,21 @@ class BugAlgorithClass(Node):
         eq = abs(self.a * self.current_pose[0] + self.b * self.current_pose[1] + self.c)
         dist2line = eq / math.hypot(self.a, self.b)
         ActDist2goal = math.hypot(self.current_pose[0] - self.PointGoal[0], self.current_pose[1] - self.PointGoal[1])
+        if self.state == "follow_wall_left" or self.state == "follow_wall_right":
+            print(dist2line, end = "\r", flush = True)
         
-        if dist2line < self.tolerance_to_target and ActDist2goal < self.Distance2Goal:
+        inx = self.current_pose[0] <= self.PointStart[0] +0.05 and self.current_pose[0] >= self.PointStart[0]-0.05
+
+        iny = self.current_pose[1] <= self.PointStart[1] +0.05 and self.current_pose[1] >= self.PointStart[1]-0.05
+        
+        if dist2line < self.tolerance_to_line and ActDist2goal < self.Distance2Goal:
+            return True
+        
+        elif inx and not iny and ActDist2goal < self.Distance2Goal -0.1:
+            print("inx")
+            return True
+        elif iny and not inx and ActDist2goal < self.Distance2Goal -0.1:
+            print("iny")
             return True
         else:
             return False
@@ -282,10 +303,13 @@ class BugAlgorithClass(Node):
             # Ejecutar acción según estado
             if self.state == "stop_robot":
                 self.stop_robot()
+
             elif self.state == "go_to_goal":
                 self.go_to_goal()
+
             elif self.state == "follow_wall_left":
                 self.follow_wall("left")
+
             elif self.state == "follow_wall_right":
                 self.follow_wall("right")
 

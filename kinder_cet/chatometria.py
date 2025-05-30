@@ -49,8 +49,8 @@ class OdometryNode(Node):
              [0.0, 0.0, 0.0 ],
              [0.0, 0.0, 0.0 ]])
 
-        self.Rk = np.array([[1.0, -0.0002376],
-                             [-0.0002376, 2.35]])  # Covarianza de medición
+        self.Rk = np.array([[2.0, -0.0002376],
+                             [-0.002376, 2.35]])  # Covarianza de medición
 
         self.R = 0.0505  # Radio rueda
         self.D = 0.17    # Distancia entre ruedas

@@ -53,9 +53,9 @@ class OdometryNode(Node):
              [0.0, 0.0, 0.0 ],
              [0.0, 0.0, 0.0 ]])
 
-        self.Rk = np.array([[1.0, -0.0002376, 0.5],
-                             [-0.0002376, 1.0, 0.5],
-                             [-0.0002376, -0.0002376, 2.35]
+        self.Rk = np.array([[1.0, 0.0, 0.0],
+                             [0.0, 1.0, 0.0],
+                             [0.0, 0.0, 1.0]
                              ])  # Covarianza de medición
 
         self.R = 0.0505  # Radio rueda
@@ -85,8 +85,38 @@ class OdometryNode(Node):
             10: [-0.4928, -1.5174,0.7641]
         }
 
+        self.arucodictfull = {}
+
+        for i in range(len(self.arucodict)):
+            
+            id = list(self.arucodict.keys())[i]
+            print (id)
+            univ_aruco_rot1 = np.array([
+                 [0.0, 0.0, 1.0, self.arucodict[id][0]],
+                 [1.0, 0.0, 0.0, self.arucodict[id][1]],
+                 [0.0, 1.0, 0.0, 0.075],
+                 [0.0, 0.0, 0.0, 1.0]
+            ])
+            #Matriz transicionaria para la ubicación de aruco con respecto del universo
+            mat_trans = tf.euler_matrix(self.arucodict[id][2],0.0,0.0,'syxz')
+
+            #Matriz de rotación particular (en z universal) del aruco
+            univ_aruco_rot2 = np.array([ 
+                 [mat_trans[0][0], mat_trans[0][1], mat_trans[0][2], 0.0],
+                 [mat_trans[1][0], mat_trans[1][1], mat_trans[1][2], 0.0],
+                 [mat_trans[2][0], mat_trans[2][1], mat_trans[2][2], 0.0],
+                 [0.0, 0.0, 0.0, 1.0]
+                                         ])
+            uni_ar = univ_aruco_rot1 @ univ_aruco_rot2
+            self.arucodictfull[id] =  uni_ar
+
+        for i in range(len(self.arucodictfull)):
+            id = list(self.arucodict.keys())[i]
+            print(id)
+            print(self.arucodictfull[id])
+
         # Transformación estática de la cámara al robot
-        self.puzzle_camara = np.array([
+        self.puzzle_camera = np.array([
             [0.0, 0.0, 1.0, 0.07],
             [-1.0, 0.0, 0.0, 0.0],
             [0.0, -1.0, 0.0, 0.08],
@@ -147,61 +177,70 @@ class OdometryNode(Node):
             if id not in self.arucodict:
                 continue
 
-            # Transformar al universo
-            #matriz de rotación del aruco
-            univ_aruco_rot1 = np.array([
-                 [0.0, 0.0, 1.0, self.arucodict[id][0]],
-                 [1.0, 0.0, 0.0, self.arucodict[id][1]],
-                 [0.0, 1.0, 0.0, 0.075],
-                 [0.0, 0.0, 0.0, 1.0]
-            ])
-            #Matriz transicionaria para la ubicación de aruco con respecto del universo
-            mat_trans = tf.euler_matrix(self.arucodict[id][2],0.0,0.0,'syxz')
-
-            #Matriz de rotación particular (en z universal) del aruco
-            univ_aruco_rot2 = np.array([ 
-                 [mat_trans[0][0], mat_trans[0][1], mat_trans[0][2], 0.0],
-                 [mat_trans[1][0], mat_trans[1][1], mat_trans[1][2], 0.0],
-                 [mat_trans[2][0], mat_trans[2][1], mat_trans[2][2], 0.0],
-                 [0.0, 0.0, 0.0, 1.0]
-                                         ])
+            if math.hypot(aruco.pose.position.z, aruco.pose.position.x) > 10.0:
+                continue
             
-            rotation = tf.quaternion_matrix([aruco.pose.orientation.x,
+            aruco_matrix = tf.quaternion_matrix([aruco.pose.orientation.x,
                                              aruco.pose.orientation.y, 
                                              aruco.pose.orientation.z, 
                                              aruco.pose.orientation.w])
-            aruco_camara = np.array([
+            
+            #fijo_movil
+            camera_aruco = np.array([
 
-                [rotation[0,0],rotation[0,1],rotation[0,2],aruco.pose.position.x],
-                [rotation[1,0],rotation[1,1],rotation[1,2],aruco.pose.position.y],
-                [rotation[2,0],rotation[2,1],rotation[2,2],aruco.pose.position.z],
+                [aruco_matrix[0,0],aruco_matrix[0,1],aruco_matrix[0,2],aruco.pose.position.x],
+                [aruco_matrix[1,0],aruco_matrix[1,1],aruco_matrix[1,2],aruco.pose.position.y],
+                [aruco_matrix[2,0],aruco_matrix[2,1],aruco_matrix[2,2],aruco.pose.position.z],
                 [0.0,0.0,0.0,1.0]
             ])
 
-            uni_puzzle = univ_aruco_rot1 @ univ_aruco_rot2 @ aruco_camara @ self.camera_puzzle
+            
+            
 
-            angles_uni_puzzle = tf.euler_from_matrix(uni_puzzle,'sxyz')
+            puzzlerot = tf.euler_matrix(0.0,0.0,self.state[2][0],'sxyz')
+            
+            uni_puzzle = np.array([
+                [puzzlerot[0][0],puzzlerot[0][1],puzzlerot[0][2],self.estado[0][0]],
+                [puzzlerot[1][0],puzzlerot[1][1],puzzlerot[1][2],self.estado[1][0]],
+                [puzzlerot[2][0],puzzlerot[2][1],puzzlerot[2][2],0.0],
+                [0.0, 0.0, 0.0, 1.0]
+            ])
+            
+            aruco_uni = np.linalg.inv(self.arucodictfull[id])
 
-            if math.hypot(aruco.pose.position.z, aruco.pose.position.x) > 10.0:
-                continue
+            camera_aruco = aruco_uni @ uni_puzzle @ self.puzzle_camera
+            
+            camera_aruco_rot = np.array([[camera_aruco[0][0],camera_aruco[0][1],camera_aruco[0][2]],
+                                         [camera_aruco[1][0],camera_aruco[1][1],camera_aruco[1][2]],
+                                         [camera_aruco[2][0],camera_aruco[2][1],camera_aruco[2][2]]])
+            
+            
 
+            #Estimación de lectura con base al estado aproximado del robot
+            camera_aruco_euler = tf.euler_from_matrix(camera_aruco_rot,'syxz')
+            
+            aruco_euler = tf.euler_from_quaternion([aruco.pose.pose.orientation.x,
+                                                   aruco.pose.pose.orientation.y,
+                                                   aruco.pose.pose.orientation.z,
+                                                   aruco.pose.pose.orientation.w],
+                                                   'sxyz')
             # Medida observada
             zik = np.array([
-                [uni_puzzle[0][3]],
-                [uni_puzzle[0][2]],
-                [angles_uni_puzzle[2]]
+                [aruco.pose.pose.z],
+                [aruco.pose.pose.x],
+                [aruco_euler[1]]
             ])
 
             
-
-            g = np.array([[self.estado[0][0]],
-                          [self.estado[1][0]],
-                          [self.estado[2][0]]
+            #lectura en z en y x y angulo de rot en y
+            g = np.array([[camera_aruco[2][3]],
+                          [camera_aruco[0][3]],
+                          [camera_aruco_euler[0]]
                           ])
-
+            #TODO terminar de escribir matriz G
             G = np.array([
-                [-1.0, 0.0, 0.0],
-                [0.0, -1.0, 0.0],
+                [aruco_uni[2][0], aruco_uni[2][1], 0.0],
+                [aruco_uni[0][0], aruco_uni[0][1], 0.0],
                 [0.0, 0.0, -1.0]
             ])
             Suma = G @ self.E @ G.T + self.Rk
