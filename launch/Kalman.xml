@@ -1,0 +1,9 @@
+<?xml version = "1.0"?>
+<launch>
+
+ <node pkg="kinder_cet" exec="mybug"/>  
+ <node pkg="kinder_cet" exec="odomc"/>
+    
+ 
+
+</launch>

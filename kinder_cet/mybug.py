@@ -38,7 +38,7 @@ class BugAlgorithClass(Node):
         
         #Misc
         self.tolerance_to_target = 0.05   
-        self.tolerance_to_line = 0.15
+        self.tolerance_to_line = 0.05
         self.allowed_distance_to_obstacle = 0.30
 
         self.histerisis = 0.05
@@ -103,6 +103,12 @@ class BugAlgorithClass(Node):
 
         new_target = [msg.x,msg.y,msg.theta]
         self.PointGoal = [msg.x, msg.y]
+        self.PointStart = [self.current_pose[0], self.current_pose[1]]
+        self.Distance2Goal = abs(math.hypot(self.PointGoal[0]-self.PointStart[0], self.PointGoal[1]-self.PointStart[1]))
+        self.a = self.PointGoal[1] - self.PointStart[1]
+        self.b = self.PointGoal[0] - self.PointStart[0]
+        self.c = -(self.a * self.PointStart[0] + self.b * self.PointStart[1])
+        print(self.PointStart)
         
         if len(self.target_pose) == 0 or self.target_pose != new_target:
             self.target_pose = new_target 
@@ -161,13 +167,7 @@ class BugAlgorithClass(Node):
     def follow_wall(self,direction):
         if self.first_time_flag == True: 
             print("Follow Wall")
-            self.PointStart = [self.current_pose[0], self.current_pose[1]]
-            self.Distance2Goal = abs(math.hypot(self.PointGoal[0]-self.PointStart[0], self.PointGoal[1]-self.PointStart[1]))
-            self.a = self.PointGoal[1] - self.PointStart[1]
-            self.b = -(self.PointGoal[0] - self.PointStart[0])
-            self.c = self.PointGoal[1] * self.PointStart[0] - self.PointGoal[0] * self.PointStart[1]
-
-            print(self.PointStart)
+            
             self.first_time_flag = False
         
         if direction == "left":
@@ -280,12 +280,7 @@ class BugAlgorithClass(Node):
         if dist2line < self.tolerance_to_line and ActDist2goal < self.Distance2Goal:
             return True
         
-        elif inx and not iny and ActDist2goal < self.Distance2Goal -0.1:
-            print("inx")
-            return True
-        elif iny and not inx and ActDist2goal < self.Distance2Goal -0.1:
-            print("iny")
-            return True
+        
         else:
             return False
         

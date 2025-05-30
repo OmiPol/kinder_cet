@@ -53,9 +53,9 @@ class OdometryNode(Node):
              [0.0, 0.0, 0.0 ],
              [0.0, 0.0, 0.0 ]])
 
-        self.Rk = np.array([[1.0, 0.0, 0.0],
-                             [0.0, 1.0, 0.0],
-                             [0.0, 0.0, 1.0]
+        self.Rk = np.array([[0.2211, 0.0019, 0.0058],
+                             [0.0019, 1.0, 0.0014],
+                             [0.0058, 0.0014, 0.042]
                              ])  # Covarianza de medición
 
         self.R = 0.0505  # Radio rueda
@@ -122,7 +122,7 @@ class OdometryNode(Node):
             [0.0, -1.0, 0.0, 0.08],
             [0.0, 0.0, 0.0, 1.0]
         ])
-        self.camera_puzzle = np.linalg.inv(self.puzzle_camara)
+        self.camera_puzzle = np.linalg.inv(self.puzzle_camera)
 
     def get_time(self, msg):
         self.tiempo = msg.clock.sec + msg.clock.nanosec / 1e9
@@ -197,7 +197,7 @@ class OdometryNode(Node):
             
             
 
-            puzzlerot = tf.euler_matrix(0.0,0.0,self.state[2][0],'sxyz')
+            puzzlerot = tf.euler_matrix(0.0,0.0,self.estado[2][0],'syxz')
             
             uni_puzzle = np.array([
                 [puzzlerot[0][0],puzzlerot[0][1],puzzlerot[0][2],self.estado[0][0]],
@@ -219,16 +219,16 @@ class OdometryNode(Node):
             #Estimación de lectura con base al estado aproximado del robot
             camera_aruco_euler = tf.euler_from_matrix(camera_aruco_rot,'syxz')
             
-            aruco_euler = tf.euler_from_quaternion([aruco.pose.pose.orientation.x,
-                                                   aruco.pose.pose.orientation.y,
-                                                   aruco.pose.pose.orientation.z,
-                                                   aruco.pose.pose.orientation.w],
-                                                   'sxyz')
+            aruco_euler = tf.euler_from_quaternion([aruco.pose.orientation.x,
+                                                   aruco.pose.orientation.y,
+                                                   aruco.pose.orientation.z,
+                                                   aruco.pose.orientation.w],
+                                                   'syxz')
             # Medida observada
             zik = np.array([
-                [aruco.pose.pose.z],
-                [aruco.pose.pose.x],
-                [aruco_euler[1]]
+                [aruco.pose.position.z],
+                [aruco.pose.position.x],
+                [aruco_euler[0]]
             ])
 
             
@@ -237,17 +237,39 @@ class OdometryNode(Node):
                           [camera_aruco[0][3]],
                           [camera_aruco_euler[0]]
                           ])
+            
+            print("---zik----")
+            print(zik)
+            print("----g----")
+            print(g)
+            
+
+            
             #TODO terminar de escribir matriz G
             G = np.array([
-                [aruco_uni[2][0], aruco_uni[2][1], 0.0],
-                [aruco_uni[0][0], aruco_uni[0][1], 0.0],
-                [0.0, 0.0, -1.0]
+                [aruco_uni[2][0], aruco_uni[2][1], -0.07 * (aruco_uni[2][0]* math.sin(self.estado[2][0]) + aruco_uni[2][1] * math.cos(self.estado[2][0]))],
+                [aruco_uni[0][0], aruco_uni[0][1], -0.07 * (aruco_uni[0][0]* math.sin(self.estado[2][0]) + aruco_uni[0][1] * math.cos(self.estado[2][0]))],
+                [0.0, 0.0, (-aruco_uni[2][1] * math.sin(self.estado[2][0]) + aruco_uni[2][0] * math.cos(self.estado[2][0]))/math.sqrt(1-math.pow(aruco_uni[2][1] * math.cos(self.estado[2][0]) + aruco_uni[2][0] * math.sin(self.estado[2][0]),2))]
             ])
             Suma = G @ self.E @ G.T + self.Rk
             K = self.E @ G.T @ np.linalg.inv(Suma)
-            innovation = zik - g
-            #print(K @ innovation)
 
+            angle_innovation  = zik[0][0] - g [0][0]
+            angle_innovation_rectified = math.atan2(math.sin(angle_innovation),math.cos(angle_innovation))
+            
+            innovation = np.array([
+                [zik[0][0] - g [0][0]],
+                [zik[1][0] - g [1][0]],
+                [angle_innovation_rectified]
+            ])
+
+            #innovation = zik - g
+            print("---ino----")
+            print(innovation)
+            print("inok")
+            print(K @ innovation)
+            #print(K @ innovation)
+            
             self.estado = self.estado + K @ innovation
             self.E = self.E - K @ G @ self.E
            
@@ -281,6 +303,23 @@ class OdometryNode(Node):
 
         self.pub_odom.publish(odom_msg)
         self.Detected_AR = []  # Reset detecciones
+
+    def print_frame(self,frame,frame_name):
+        rot = np.array([
+            [frame[0][0],frame[0][1],frame[0][2]],
+            [frame[1][0],frame[1][1],frame[1][2]],
+            [frame[2][0],frame[2][1],frame[2][2]]
+        ])
+        angles = tf.euler_from_matrix(rot,'sxyz')
+        print ("----" + frame_name + "------")
+        print("orientation:")
+        print("   xrot: " + str(math.degrees(angles[0])))
+        print("   yrot: " + str(math.degrees(angles[1])))
+        print("   zrot: " + str(math.degrees(angles[2])))
+        print("position")
+        print("   x: " + str(frame[0][3]))
+        print("   y: " + str(frame[1][3]))
+        print("   z: " + str(frame[2][3]))
 
 def main(args=None):
     rclpy.init(args=args)
