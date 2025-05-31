@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+
+<robot name = "puzzlebot_copy">
+
+<!--colores-->
+ <material name="Cyan">
+  <color rgba="0 1.0 1.0 0.5"/>
+ </material>
+
+  <material name="Green">
+  <color rgba="0 1.0 0 0.5"/>
+ </material>
+
+ <material name="Red">
+  <color rgba="1 0 0 0.5"/>
+ </material>
+ <!--empieza el link, cilindrico-->
+
+
+  <link name="base_footprint">
+   <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+     <geometry>
+      <sphere radius="0.01"/>
+     </geometry>
+     <material name="Cyan"/>
+   </visual>
+  </link>
+  
+  <link name="base_link">
+   <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+     <geometry>
+      <mesh filename="package://robot_description/meshes/Puzzlebot_Jetson_Lidar_Edition_Base.stl"/>
+     </geometry>
+     <material name="Red"/>
+   </visual>
+  </link>
+  
+   <link name="wheel_r">
+   <visual>
+    <origin xyz="0 0 0" rpy="-1.5708 0 0"/>
+     <geometry>
+      <mesh filename="package://robot_description/meshes/Puzzlebot_Wheel.stl"/>
+     </geometry>
+     <material name="Red"/>
+   </visual>
+  </link>
+
+   <link name="wheel_l">
+   <visual>
+    <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+     <geometry>
+      <mesh filename="package://robot_description/meshes/Puzzlebot_Wheel.stl"/>
+     </geometry>
+     <material name="Red"/>
+   </visual>
+  </link>
+
+  <link name="caster_wheel">
+   <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+     <geometry>
+      <mesh filename="package://robot_description/meshes/Puzzlebot_Caster_Wheel.stl"/>
+     </geometry>
+     <material name="Red"/>
+   </visual>
+  </link>
+
+
+
+ <!--JOINTS-->
+ 
+ <!--base footprint a base-->
+<joint name="footprint_to_base" type = "fixed">
+    <origin xyz="0.0 0.0 0.05" rpy="0 0 0"/>
+    <parent link="base_footprint"/>
+    <child link="base_link"/> 
+    <axis xyz="0 0 1" />
+    <limit velocity="100" effort="100"/>
+  </joint>
+  
+  
+ <!--base a rueda derecha-->
+  <joint name="base_to_r_wheel" type = "continuous">
+    <origin xyz="0.052 -0.095 -0.0025" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="wheel_r"/> 
+    <axis xyz="0 1 0" />
+    <limit velocity="100" effort="100"/>
+  </joint>
+
+<!--JOINTS-->
+<!--base a rueda izquierda-->
+  <joint name="base_to_l_wheel" type = "continuous">
+    <origin xyz="0.052 0.095 -0.0025" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="wheel_l"/> 
+    <axis xyz="0 1 0" />
+    <limit velocity="100" effort="100"/>
+  </joint>
+  
+<!--base a rueda loca-->
+  <joint name="base_to_caster_wheel" type = "fixed">
+    <origin xyz="-0.095 0.0 -0.03" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="caster_wheel"/> 
+  </joint>
+
+
+
+</robot>

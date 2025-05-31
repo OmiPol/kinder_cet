@@ -18,7 +18,7 @@
  </node> 
 
  <node pkg="kinder_cet" exec="move_ghost"/> 
- <!--node pkg="kinder_cet" exec="mybug"/-->  
+ <!--node pkg="kinder_cet" exec="robug"/-->  
  <node pkg="kinder_cet" exec="odomc"/> 
   
  

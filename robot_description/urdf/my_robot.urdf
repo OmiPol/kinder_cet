@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<!--esto es un comentario-->
+<robot name="my_robot">
+<!--colores-->
+ <material name="Cyan">
+  <color rgba="0 1.0 1.0 0.5"/>
+ </material>
+
+  <material name="Green">
+  <color rgba="0 1.0 0 0.5"/>
+ </material>
+
+ <material name="Red">
+  <color rgba="1 0 0 0.5"/>
+ </material>
+
+ <!--empieza el link, cilindrico-->
+  <link name="base_link">
+   <visual>
+    <origin xyz="0 0 0.3" rpy="0 0 0"/>
+     <geometry>
+      <cylinder length = "0.6" radius = "0.3"/>
+     </geometry>
+     <material name="Cyan"/>
+   </visual>
+  </link>
+
+ <!--empieza el  segundo link, cilindrico-->
+  <link name="second_link">
+   <visual>
+    <origin xyz="0 0 0.3" rpy="0 0 0"/>
+     <geometry>
+      <cylinder length = "0.6" radius = "0.2"/>
+     </geometry>
+     <material name="Red"/>
+   </visual>
+  </link>
+
+   <!--empieza el  tercer link, cilindrico -->
+  <link name="third_link">
+   <visual>
+    <origin xyz="0 0 0.2" rpy="0 0 0"/>
+     <geometry>
+      <cylinder length = "0.6" radius = "0.1"/>
+     </geometry>
+     <material name="Green"/>
+   </visual>
+  </link>
+
+
+
+  <joint name="base_to_second_joint" type="continuous">
+   <origin xyz="0 0 0.6" rpy="0 0 0"/>
+   <parent link="base_link"/>
+   <child link="second_link"/>   
+   <axis xyz="1 0 0 "/>
+   <limit velocity="100" effort="100"/>
+  </joint>
+
+  <joint name="second_to_third" type="continuous">
+   <origin xyz="0 0 0.6" rpy="0 0 0"/>
+   <parent link="second_link"/>
+   <child link="third_link"/> 
+   <axis xyz="1 0 0 "/>
+   <limit velocity="100" effort="100"/>  
+  </joint>
+
+</robot>

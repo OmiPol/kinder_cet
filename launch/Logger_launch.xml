@@ -1,0 +1,10 @@
+<?xml version = "1.0"?>
+<launch>
+
+ 
+ <node pkg="kinder_cet" exec="logger">
+ <param name="use_sim_time" value="true"/>
+
+ </node> 
+
+</launch>

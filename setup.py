@@ -35,11 +35,12 @@ setup(
             "mybug = kinder_cet.mybug:main",
             "odom2 = kinder_cet.Odometry_param:main",
             "test_lidar = kinder_cet.test_lidar:main",
-            "odomc = kinder_cet.chatometria:main",
+            "odomc = kinder_cet.kalmanfull:main",
             "robug = kinder_cet.robot_bug:main",
             "odom3 = kinder_cet.kalman_on_steroids:main",
             "move_bot = kinder_cet.Puzzle_move:main",
-            "move_ghost = kinder_cet.Puzzle_move_ghost:main"
+            "move_ghost = kinder_cet.Puzzle_move_ghost:main",
+            "logger = kinder_cet.logger:main"
 
             
             

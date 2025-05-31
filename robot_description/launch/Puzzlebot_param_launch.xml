@@ -1,0 +1,41 @@
+<?xml version = "1.0"?>
+<launch>
+ <let name="urdf_path" value="$(find-pkg-share robot_description)/urdf/Puzzlebot.urdf"/>
+ <let name="urdf_path_sphere" value="$(find-pkg-share robot_description)/urdf/Sphere.urdf"/>
+  
+  <!--Robot 1 w/sphere Nodes and urdf-->
+ <node pkg="robot_state_publisher" exec="robot_state_publisher" args="--ros-args --remap __ns:=/robot1 -p frame_prefix:=robot1/">
+  <param name="robot_description" value="$(command 'xacro $(var urdf_path)')" />
+ </node>  
+ 
+ <node pkg="robot_state_publisher" exec="robot_state_publisher" args="--ros-args --remap __ns:=/robot1_sphere -p frame_prefix:=robot1_sphere/">
+  <param name="robot_description" value="$(command 'xacro $(var urdf_path_sphere)')" />
+ </node>
+  
+  
+  
+ <node pkg="manchester" exec="Puzzle_move_param">
+    <param name="namespace" value="robot1" />
+ </node>  
+ 
+ 
+ 
+ <node pkg="manchester" exec="Odometry_param">
+   <param name="namespace" value="robot1" />
+ </node> 
+  
+ <node pkg="manchester" exec="Path_gen_param">
+   <param name="namespace" value="robot1" />
+ </node> 
+ 
+ <node pkg="manchester" exec="Puzzlectrl_param">
+   <param name="namespace" value="robot1" />
+ </node> 
+ 
+ <node pkg="manchester" exec="Sphere_move_param">
+   <param name="namespace" value="robot1" />
+ </node> 
+  
+
+ <node pkg="rviz2" exec="rviz2" args= "-d /home/omi//Documents/configparam.rviz"/>
+</launch>

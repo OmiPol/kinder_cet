@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!--esto es un comentario-->
+<robot name="sphere">
+<!--colores-->
+ <material name="Cyan">
+  <color rgba="0 1.0 1.0 0.5"/>
+ </material>
+
+
+
+ <!--empieza el link, cilindrico-->
+  <link name="base_link">
+   <visual>
+    <origin xyz="0 0 0.06" rpy="0 0 0"/>
+     <geometry>
+      <sphere radius = "0.015"/>
+     </geometry>
+     <material name="Cyan"/>
+   </visual>
+  </link>
+
+
+
+</robot>
