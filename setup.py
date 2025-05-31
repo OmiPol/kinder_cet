@@ -37,7 +37,9 @@ setup(
             "test_lidar = kinder_cet.test_lidar:main",
             "odomc = kinder_cet.chatometria:main",
             "robug = kinder_cet.robot_bug:main",
-            "odom3 = kinder_cet.kalman_on_steroids:main"
+            "odom3 = kinder_cet.kalman_on_steroids:main",
+            "move_bot = kinder_cet.Puzzle_move:main",
+            "move_ghost = kinder_cet.Puzzle_move_ghost:main"
 
             
             

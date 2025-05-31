@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import rclpy, math, tf_transformations
+import rclpy, math, tf_transformations, time, random
 from rclpy.node import Node
 from tf2_ros import TransformBroadcaster
 from sensor_msgs.msg import JointState
@@ -8,6 +8,7 @@ from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from turtlesim.msg import Pose
+from my_interfaces.msg import WheelV
 
 
 
@@ -18,12 +19,13 @@ class Puzzle_move(Node):
         
         self.timer = self.create_timer(0.1, self.timer_callback)
         self.pub_tf = TransformBroadcaster(self)
-        self.pos = self.create_publisher(Pose,"/sim/position",10)
-        self.pub = self.create_publisher(JointState,'/sim/joint_states',10)
-        self.sub= self.create_subscription(Odometry,"/odom",self.get_position,1) 
+        self.pos = self.create_publisher(Pose,"/real/position",10)
+        self.pub = self.create_publisher(JointState,'/real/joint_states',10)
+        self.sub= self.create_subscription(Odometry,"/ground_truth",self.get_position,1) 
+        
        
         
-
+        self.t0 = self.get_clock().now()
         
         self.vels = None
         #Variables Puzzlebot
@@ -62,11 +64,12 @@ class Puzzle_move(Node):
     
     def timer_callback(self):
         msg = TransformStamped()
+        t = (self.get_clock().now()-self.t0).nanoseconds/1e9
         
         #Control de posición y rotación del puzzlebot
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = "world"
-        msg.child_frame_id = "/sim/base_footprint"
+        msg.child_frame_id = "/real/base_footprint"
         msg.transform.translation.x = self.x
         msg.transform.translation.y = self.y
         msg.transform.translation.z = 0.0
