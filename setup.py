@@ -40,7 +40,9 @@ setup(
             "odom3 = kinder_cet.kalman_on_steroids:main",
             "move_bot = kinder_cet.Puzzle_move:main",
             "move_ghost = kinder_cet.Puzzle_move_ghost:main",
-            "logger = kinder_cet.logger:main"
+            "logger = kinder_cet.logger:main",
+            "scan_rect = kinder_cet.lidar_rect:main",
+            "high_SM = kinder_cet.high_level:main"
 
             
             

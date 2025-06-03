@@ -1,0 +1,25 @@
+<?xml version = "1.0"?>
+<launch>
+ <let name="urdf_path" value="$(find-pkg-share robot_description)/urdf/Puzzlebot.urdf"/>
+
+ 
+ <node pkg="robot_state_publisher" exec="robot_state_publisher" args="--ros-args --remap __ns:=/sim -p frame_prefix:=sim/">
+  <param name="robot_description" value="$(command 'xacro $(var urdf_path)')" />
+ </node>
+
+
+ 
+ <node pkg="kinder_cet" exec="move_bot">
+ <param name="use_sim_time" value="false"/>
+
+ </node>  
+ <node pkg="kinder_cet" exec="high_SM"/>
+ <node pkg="kinder_cet" exec="scan_rect"/>
+ <node pkg="kinder_cet" exec="robug"/>  
+ <node pkg="kinder_cet" exec="odomc"/> 
+
+  <node pkg="rviz2" exec="rviz2" args= "-d /home/omar//Documents/real.rviz"/>
+  
+ 
+
+</launch>

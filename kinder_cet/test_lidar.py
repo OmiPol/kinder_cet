@@ -23,12 +23,12 @@ class TestLidarClass(Node):
             if ranges[i] > data.range_max: ranges[i] = data.range_max +0.01
             if ranges[i] < data.range_min: ranges[i] = data.range_min-0.01
         self.robotView = {
-            'front' : min(min(ranges[0:22]),min(ranges[338:359])),
-            'front_right' : min(ranges[294:337]),
-            'front_left' : min(ranges[23:67]),
-            'right' : min(ranges[248:292]),
-            'back' : min(ranges[113:247]),
-            'left' : min(ranges[68:112])            
+            'front' : min(min(ranges[0:66]),min(ranges[1014:1080])),
+            'front_right' : min(ranges[827:1013]),
+            'front_left' : min(ranges[67:251]),
+            'right' : min(ranges[742:826]),
+            'back' : min(ranges[337:741]),
+            'left' : min(ranges[252:336])            
         }
 
         #print(self.robotView["front"])

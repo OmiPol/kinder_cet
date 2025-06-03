@@ -7,6 +7,7 @@ from std_msgs.msg import String
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from turtlesim.msg import Pose
+from aruco_opencv_msgs.msg import ArucoDetection
 
 
 class BugAlgorithClass(Node):
@@ -18,7 +19,17 @@ class BugAlgorithClass(Node):
         self.odom = self.create_subscription(Odometry, "/odom", self.odom_callback,1)
         self.create_subscription(Pose,"/target",self.target_callback,1)
         self.create_subscription(LaserScan,"/scan",self.lidar_callback,1)
+        
+        self.sub_ar = self.create_subscription(ArucoDetection, "/aruco_detections", self.aruco_callback, 1)
         self.state_pub = self.create_publisher(String, "/state",1)
+        
+        self.imperative_sub = self.create_subscription(String,"/imperative",self.imperative_callback,1)
+
+        
+        #High Level Control
+
+        self.imperative = "Stop"
+        
         #Odometry
         self.current_pose = []
         self.target_pose = []
@@ -35,16 +46,20 @@ class BugAlgorithClass(Node):
         #Follow_wall
         self.tolerance_to_target = 0.05
         self.tolerance_to_line = 0.05
-        self.allowed_distance_to_obstacle = 0.30
-        self.histerisis = 0.05
+        self.allowed_distance_to_obstacle = 0.38
+        self.histerisis = 0.03
         #Controller
         self.angP = 0.3
         self.linP = 0.2
-        self.linMax = 0.1
-        self.angMax = 0.2
+        self.linMax = 0.08
+        self.angMax = 0.4
         #Follow_wall variables
-        self.Dwall = 0.35
-        self.beta = 0.75
+        self.Dwall = 0.38
+
+
+
+
+        self.beta = 0.99
         self.Kfw = 0.99
         
         #Misc
@@ -56,18 +71,39 @@ class BugAlgorithClass(Node):
         self.c = 0.0
         self.dist_at_hit_point = None  
 
+        #Aruco variables:
+        self.AR_angle =0.0
+        self.AR_xdistance = 0.0
+        self.AR_zdistance = 0.0
+        self.AR_id = 0
+
+    def aruco_callback(self,msg):
+        for aruco in msg.markers:
+            if aruco.marker_id != self.AR_id:
+                continue
+
+            self.AR_zdistance = aruco.pose.position.z
+            self.AR_xdistance = aruco.pose.position.x
+
+            euler = tf_transformations.euler_from_quaternion([aruco.pose.position.x,
+                                                              aruco.pose.position.y,
+                                                              aruco.pose.position.z,
+                                                              aruco.pose.position.w])
+            self.AR_angle = euler[1]
+
+    #----TOPIC CALLBACKS------
     def lidar_callback(self, data):
         ranges = list(data.ranges)
         for i in range(len(ranges)):
             if ranges[i] > data.range_max: ranges[i] = data.range_max + 0.01
             if ranges[i] < data.range_min: ranges[i] = data.range_min - 0.01
         self.robotView = {
-            'front' : min(min(ranges[0:22]),min(ranges[338:359])),
-            'front_right' : min(ranges[294:337]),
-            'front_left' : min(ranges[23:67]),
-            'right' : min(ranges[248:292]),
-            'back' : min(ranges[113:247]),
-            'left' : min(ranges[68:112])            
+            'front' : min(min(ranges[0:66]),min(ranges[1014:1080])),
+            'front_right' : min(ranges[827:1013]),
+            'front_left' : min(ranges[67:251]),
+            'right' : min(ranges[742:826]),
+            'back' : min(ranges[337:741]),
+            'left' : min(ranges[252:336])            
         }
 
     def target_callback(self, msg):
@@ -96,6 +132,10 @@ class BugAlgorithClass(Node):
         __,__,yaw = tf_transformations.euler_from_quaternion(q)
         self.current_pose = [x,y,yaw]
 
+    def  imperative_callback(self,msg):
+        self.imperative = msg.data
+
+    #-----MOVE FUNCTIONS-------
     def move_robot(self,v,w):
         v = min(self.linMax,max(v,-self.linMax))
         w = min(self.angMax,max(w,-self.angMax))
@@ -126,17 +166,30 @@ class BugAlgorithClass(Node):
             z = 0.0
         self.move_robot(x,z)
 
-    def atTarget(self):
-        Ex = self.target_pose[0] - self.current_pose[0]
+    def go_to_angle(self):
+        if self.first_time_flag: 
+            print("Goin' to angle")
+            self.first_time_flag = False
+        Ex =self.target_pose[0] - self.current_pose[0]
         Ey = self.target_pose[1] - self.current_pose[1]
         distance_to_target = math.hypot(Ex,Ey)
-        if distance_to_target < self.tolerance_to_target:
-            self.first_time_flag = True
-            self.target_pose = []
-            self.got_new_target = False
+        angle_diff = np.arctan2(Ey,Ex)
+        angle_error = np.arctan2(math.sin(angle_diff-self.current_pose[2]),math.cos(angle_diff-self.current_pose[2]))
+        if abs(distance_to_target) > self.tolerance_to_target:
+            x = 0.0
+            #x = max(min(self.linP * distance_to_target,self.linMax),-self.linMax)
+            z = max(min(self.angP * angle_error,self.angMax),-self.angMax)  
+            
+        else:
+            x = 0.0
+            z = 0.0
+        self.move_robot(x,z)
+
+        if angle_error < 0.06:
             return True
-        return False
-    
+        else:
+            return False
+
     def follow_wall(self,direction):
         if self.first_time_flag == True: 
             print("Follow Wall")
@@ -181,18 +234,61 @@ class BugAlgorithClass(Node):
         #self.state_pub.publish(msg)
         self.move_robot(v,w)
 
+    def align_aruco(self):
+        v = 0.5 
+        w = 0.0
+
+        w = 0.5 * self.AR_xdistance
+
+        if self.AR_zdistance < 0.2:
+            v = 0.3
+        if self.AR_zdistance <0.1:
+            v = 0.2
+        if self.AR_zdistance <0.5:
+            v = 0.0
+
+        self.move_robot(v,w)
+            #-----LOGIC FUNCTIONS-------
+    def at_angle(self):
+        if self.first_time_flag: 
+            print("Goin' to angle")
+            self.first_time_flag = False
+        Ex =self.target_pose[0] - self.current_pose[0]
+        Ey = self.target_pose[1] - self.current_pose[1]
+        distance_to_target = math.hypot(Ex,Ey)
+        angle_diff = np.arctan2(Ey,Ex)
+        angle_error = np.arctan2(math.sin(angle_diff-self.current_pose[2]),math.cos(angle_diff-self.current_pose[2]))
+        
+
+        if angle_error < 0.06:
+            return True
+        else:
+            return False
+
+    def atTarget(self):
+        Ex = self.target_pose[0] - self.current_pose[0]
+        Ey = self.target_pose[1] - self.current_pose[1]
+        distance_to_target = math.hypot(Ex,Ey)
+        if distance_to_target < self.tolerance_to_target:
+            self.first_time_flag = True
+            self.target_pose = []
+            self.got_new_target = False
+            return True
+        return False
+    
     def isObstacleTooClose(self):
         readings = [
             self.robotView.get("front_left"),
             self.robotView.get("front"),
             self.robotView.get("front_right"),
         ]
+        
         return min(readings) <= self.allowed_distance_to_obstacle - self.histerisis
 
     def isObstacleCleared(self):
         return self.robotView.get("front") > self.allowed_distance_to_obstacle + self.histerisis
 
-    def mLineAgainWithProgress(self):  # ← MODIFICADO
+    def mLineAgainWithProgress(self):  
         eq = abs(self.a * self.current_pose[0] + self.b * self.current_pose[1] + self.c)
         dist2line = eq / math.hypot(self.a, self.b)
         ActDist2goal = math.hypot(self.current_pose[0] - self.PointGoal[0], self.current_pose[1] - self.PointGoal[1])
@@ -210,6 +306,13 @@ class BugAlgorithClass(Node):
     def gotNewTarget(self):
         return self.got_new_target
 
+    def boxGrabbed(self):
+        if self.AR_zdistance < 0.1:
+            return True
+        else:
+            return False
+
+    #-----STATE MACHINE------
     def stateMachine(self):
         if len(self.current_pose) > 0 and len(self.robotView) > 0:
             if self.state == "stop_robot":
@@ -220,14 +323,27 @@ class BugAlgorithClass(Node):
                 self.follow_wall("left")
             elif self.state == "follow_wall_right":
                 self.follow_wall("right")
+            elif self.state == "go_to_angle":
+                self.go_to_angle()
 
             # Transiciones de estado
             if self.state == "stop_robot" and self.gotNewTarget():
+                if self.imperative == "Go":
+                    self.next_state = "go_to_angle"
+                elif self.imperative == "Grab":
+                    self.next_state = "grab_box"
+            
+
+            elif self.state == "go_to_angle" and self.at_angle():
                 self.next_state = "go_to_goal"
 
+                
+
             elif self.state == "go_to_goal":
+
                 if self.atTarget():
                     self.next_state = "stop_robot"
+
                 elif self.isObstacleTooClose():
                     self.closest_dist_to_goal_on_wall = math.hypot(
                         self.current_pose[0] - self.PointGoal[0],
@@ -238,8 +354,16 @@ class BugAlgorithClass(Node):
                     self.next_state = f"follow_wall_{self.wall_following_direction}"
 
             elif self.state in ["follow_wall_left", "follow_wall_right"]:
+
+
                 if self.mLineAgainWithProgress():
-                    self.next_state = "go_to_goal"
+                    self.next_state = "go_to_angle"
+
+            elif self.state == "grab_box" and self.boxGrabbed():
+                self.next_state = "Stop_robot"
+
+            if self.imperative == "Stop":
+                self.next_state = "Stop_robot"
 
             # Aplicar transición
             if self.next_state != self.state:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import rclpy, math, tf_transformations
+import rclpy, math, time
 import numpy as np
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
@@ -32,7 +32,6 @@ class OdometryNode(Node):
         self.subL = self.create_subscription(Float32, "/VelocityEncL", self.callback_encL, qos_profile)
         self.sub_ar = self.create_subscription(ArucoDetection, "/aruco_detections", self.aruco_callback, 1)
         self.sub_cmd = self.create_subscription(Twist, self.namespace + "/cmd_vel", self.get_req_velocities, 1)
-        self.sub_clock = self.create_subscription(Clock, "/clock", self.get_time, 1)
 
         # Publicador
         self.pub_odom = self.create_publisher(Odometry, self.namespace + "/odom", 10)
@@ -49,34 +48,34 @@ class OdometryNode(Node):
              [0.0, 0.0, 0.0 ],
              [0.0, 0.0, 0.0 ]])
 
-        self.Rk = np.array([[2.0, -0.0002376],
-                             [-0.002376, 2.35]])  # Covarianza de medición
+        self.Rk = np.array([[0.5105, 0.2019],
+                             [0.2019, 13.4345]])  # Covarianza de medición
 
         self.R = 0.0505  # Radio rueda
         self.D = 0.17    # Distancia entre ruedas
-        self.kl = 0.8 #self.kl = 0.1333
-        self.kr = 0.8 #self.kr = 0.1351
+        self.kl = 0.1333 #self.kl = 0.1333
+        self.kr = 0.1351 #self.kr = 0.1351
 
-        self.tiempo = 0.0
-        self.tin = 0.0
-        self.tfin = 0.0
+
+        self.tin = time.time()
+        self.tfin = time.time()
         self.vel = 0.0
         self.wR = 0.0
         self.wL = 0.0
 
         self.Detected_AR = []
         self.arucodict = {
-            0:  [4.0, 0.0],
-            1:  [1.6464, -2.6464],
-            2:  [0.925, 0.0],
-            3:  [0.0, 4.0],
-            4:  [0.0, -4.0],
-            5:  [-4.0, 0.0],
-            6:  [1.075, 0.0],
-            7:  [-2.31996, 0.4594],
-            8:  [-2.5379, 1.6768],
-            9:  [-1.4336, -1.4504],
-            10: [-0.4928, -1.5174]
+            #0:  [1.75, 2.0],
+            1:  [-1.33, 0.15],
+            2:  [1.33, -0.10],
+            3:  [0.0, -1.03],
+            4:  [0.0, 1.03],
+            5:  [-1.33, -0.15],
+            #6:  [1.075, 0.0],
+            #7:  [-2.31996, 0.4594],
+            #8:  [-2.5379, 1.6768],
+            #9:  [-1.4336, -1.4504],
+            #10: [-0.4928, -1.5174]
         }
 
         # Transformación estática de la cámara al robot
@@ -87,8 +86,7 @@ class OdometryNode(Node):
             [0.0, 0.0, 0.0, 1.0]
         ])
 
-    def get_time(self, msg):
-        self.tiempo = msg.clock.sec + msg.clock.nanosec / 1e9
+
 
     def aruco_callback(self, msg):
         self.Detected_AR = msg.markers 
@@ -103,7 +101,7 @@ class OdometryNode(Node):
         self.vel = msg.linear.x
 
     def odometry_callback(self):
-        self.tfin = self.tiempo
+        self.tfin = time.time()
         delta = self.tfin - self.tin
         self.tin = self.tfin
 
@@ -168,8 +166,8 @@ class OdometryNode(Node):
             S = G @ self.E @ G.T + self.Rk
             K = self.E @ G.T @ np.linalg.inv(S)
             innovation = zik - g
-           # self.estado += K @ innovation
-           # self.E = self.E - K @ G @ self.E
+            self.estado += K @ innovation
+            self.E = self.E - K @ G @ self.E
 
         # Publicar mensaje Odometry
         odom_msg = Odometry()
