@@ -17,7 +17,7 @@ class OdometryNode(Node):
         super().__init__("odometry_kalman")
         self.get_logger().info("Odometry node with Kalman filter has started...")
 
-        # Parámetro de namespace
+        # Namespace Parameters
         self.namespace = self.declare_parameter('namespace', "").value
 
         # QoS para simulación
@@ -27,50 +27,59 @@ class OdometryNode(Node):
             depth=1
         )
 
-        # Suscripciones
+        # Subscriptions
         self.subR = self.create_subscription(Float32, "/VelocityEncR", self.callback_encR, qos_profile)
         self.subL = self.create_subscription(Float32, "/VelocityEncL", self.callback_encL, qos_profile)
         self.sub_ar = self.create_subscription(ArucoDetection, "/aruco_detections", self.aruco_callback, 1)
         self.sub_cmd = self.create_subscription(Twist, self.namespace + "/cmd_vel", self.get_req_velocities, 1)
 
-        # Publicador
+        # Publishers
         self.pub_odom = self.create_publisher(Odometry, self.namespace + "/odom", 10)
 
-        # Timer
+        # Timers
         self.create_timer(0.1, self.odometry_callback)
 
-        # Variables iniciales
+        # Inicial variables
+
+        #Inicial State
         self.estado = np.zeros((3, 1))  # x, y, theta
 
-
+        #Confiability Matrix
         self.E = np.array(
             [[0.0, 0.0, 0.0 ],
              [0.0, 0.0, 0.0 ],
              [0.0, 0.0, 0.0 ]])
 
-        self.Rk = np.array([[0.5105, 0.2019],
-                             [0.2019, 13.4345]])  # Covarianza de medición
+
+        #Covariance Matrix from the Camera
+        self.Rk = np.array([[0.061, 0.0022],
+                             [0.0022, 0.008]])  # Covarianza de medición
 
         self.R = 0.0505  # Radio rueda
         self.D = 0.17    # Distancia entre ruedas
         self.kl = 0.1333 #self.kl = 0.1333
         self.kr = 0.1351 #self.kr = 0.1351
 
-
+        #Time variables
         self.tin = time.time()
         self.tfin = time.time()
+
+        #Variables de velocidad de llantas y velocidad linear
         self.vel = 0.0
         self.wR = 0.0
         self.wL = 0.0
-
+        
+        #Arucos
+        
         self.Detected_AR = []
+        
         self.arucodict = {
             #0:  [1.75, 2.0],
-            1:  [-1.33, 0.15],
-            2:  [1.33, -0.10],
+            1:  [-1.153, 0.15],
+            2:  [1.435, -0.15],
             3:  [0.0, -1.03],
             4:  [0.0, 1.03],
-            5:  [-1.33, -0.15],
+            5:  [-1.53, -0.15],
             #6:  [1.075, 0.0],
             #7:  [-2.31996, 0.4594],
             #8:  [-2.5379, 1.6768],
@@ -78,7 +87,7 @@ class OdometryNode(Node):
             #10: [-0.4928, -1.5174]
         }
 
-        # Transformación estática de la cámara al robot
+        # Camera to Robot Transform
         self.trans = np.array([
             [0.0, 0.0, 1.0, 0.07],
             [-1.0, 0.0, 0.0, 0.0],
@@ -87,7 +96,7 @@ class OdometryNode(Node):
         ])
 
 
-
+    #Information Callbacks
     def aruco_callback(self, msg):
         self.Detected_AR = msg.markers 
 
@@ -100,16 +109,18 @@ class OdometryNode(Node):
     def get_req_velocities(self, msg):
         self.vel = msg.linear.x
 
+
+
     def odometry_callback(self):
         self.tfin = time.time()
         delta = self.tfin - self.tin
         self.tin = self.tfin
 
-        # Movimiento estimado por odometría
+        # Estimated movement by odometry
         lin_vel = self.R * (self.wL + self.wR) / 2
         ang_vel = self.R * (self.wR - self.wL) / self.D
         theta = self.estado[2][0] + ang_vel * delta
-        theta = math.atan2(math.sin(theta), math.cos(theta))  # Normalización
+        theta = math.atan2(math.sin(theta), math.cos(theta))  # Angle normalization 
         x = self.estado[0][0] + lin_vel * math.cos(theta) * delta
         y = self.estado[1][0] + lin_vel * math.sin(theta) * delta
 
@@ -123,34 +134,42 @@ class OdometryNode(Node):
             [2 / self.D, -2 / self.D]
         ])
 
-        Qk = nabla @ sigma @ nabla.T
+        Qk = nabla @ sigma @ nabla.T #Noise Calculation
+
+
         H = np.array([
             [1.0, 0.0, -delta * lin_vel * math.sin(self.estado[2][0])],
             [0.0, 1.0, delta * lin_vel * math.cos(self.estado[2][0])],
             [0.0, 0.0, 1.0]
         ])
+
+        #Prediction of State
         self.E = H @ self.E @ H.T + Qk
         self.estado = np.array([[x], [y], [theta]])
 
-        # Corrección con ArUco
+        # Corrección of State with Aruco
         for aruco in self.Detected_AR:
             id = aruco.marker_id
+
+            #Check for false positives
             if id not in self.arucodict:
                 continue
 
-            # Transformar al frame del robot
+            # Frame Transformation
             p = np.array([[aruco.pose.position.x], [aruco.pose.position.y], [aruco.pose.position.z], [1]])
             p_robot = self.trans @ p
 
+            #Check for distance to Aruco
             if np.linalg.norm(p_robot[:2]) > 10.0:
                 continue
 
-            # Medida observada
+            # Observed measurment conditioning
             zik = np.array([
                 [np.linalg.norm(p_robot[:2])],
                 [math.atan2(p_robot[1][0], p_robot[0][0])]
             ])
 
+            #Expected measurment calculation
             dx = self.arucodict[id][0] - self.estado[0][0]
             dy = self.arucodict[id][1] - self.estado[1][0]
             dist = math.hypot(dx, dy)
@@ -159,17 +178,20 @@ class OdometryNode(Node):
 
             g = np.array([[dist], [angle]])
 
+            #Linarization matrix
             G = np.array([
                 [-dx / dist, -dy / dist, 0],
                 [dy / (dx ** 2 + dy ** 2), -dx / (dx ** 2 + dy ** 2), -1]
             ])
+
+            #Correction of Confidence and State
             S = G @ self.E @ G.T + self.Rk
             K = self.E @ G.T @ np.linalg.inv(S)
             innovation = zik - g
             self.estado += K @ innovation
             self.E = self.E - K @ G @ self.E
 
-        # Publicar mensaje Odometry
+        # Message Publishing
         odom_msg = Odometry()
         odom_msg.header.frame_id = "world"
         odom_msg.child_frame_id = self.namespace + "/base_footprint"

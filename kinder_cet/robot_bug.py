@@ -85,10 +85,10 @@ class BugAlgorithClass(Node):
             self.AR_zdistance = aruco.pose.position.z
             self.AR_xdistance = aruco.pose.position.x
 
-            euler = tf_transformations.euler_from_quaternion([aruco.pose.position.x,
-                                                              aruco.pose.position.y,
-                                                              aruco.pose.position.z,
-                                                              aruco.pose.position.w])
+            euler = tf_transformations.euler_from_quaternion([aruco.pose.orientation.x,
+                                                              aruco.pose.orientation.y,
+                                                              aruco.pose.orientation.z,
+                                                              aruco.pose.orientation.w])
             self.AR_angle = euler[1]
 
     #----TOPIC CALLBACKS------
@@ -349,7 +349,8 @@ class BugAlgorithClass(Node):
                         self.current_pose[0] - self.PointGoal[0],
                         self.current_pose[1] - self.PointGoal[1]
                     )
-                    self.dist_at_hit_point = self.closest_dist_to_goal_on_wall  # ← MODIFICADO
+                    self.dist_at_hit_point = self.closest_dist_to_goal_on_wall  
+                    
                     self.wall_following_direction = self.choose_follow_direction()
                     self.next_state = f"follow_wall_{self.wall_following_direction}"
 
@@ -360,10 +361,10 @@ class BugAlgorithClass(Node):
                     self.next_state = "go_to_angle"
 
             elif self.state == "grab_box" and self.boxGrabbed():
-                self.next_state = "Stop_robot"
+                self.next_state = "stop_robot"
 
-            if self.imperative == "Stop":
-                self.next_state = "Stop_robot"
+            if self.imperative == "stop":
+                self.next_state = "stop_robot"
 
             # Aplicar transición
             if self.next_state != self.state:

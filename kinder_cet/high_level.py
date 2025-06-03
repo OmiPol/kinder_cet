@@ -9,18 +9,24 @@ class TestLidarClass(Node):
     def __init__(self):
         super().__init__("Test_Lidar_node")
         self.get_logger().info("Test_lidar node has been started...")
-        self.create_timer(0.2,self.stateMachine)
-        self.create_subscription(LaserScan, '/scan',self.lidar_callback,1)
+        self.create_timer(1.0,self.stateMachine)
         self.state_sub = self.create_subscription(String, "/state",self.recieve_state,1)
         self.target_pub = self.create_publisher(Pose,"/target",1)
         self.imperative_pub = self.create_publisher(String,"/imperative",1)
-        self.command_sub = self.create_subscription(String,"/command",self.recieve_command)
+        self.command_sub = self.create_subscription(String,"/command",self.recieve_command,1)
+        self.high_state_pub = self.create_publisher(String,"high_state",1)
         
         self.command = "stop"
         self.bug_state = "stop_robot"
+        self.finish_task = False
         self.loading_station = [1.0, 0.0]
         self.alignment_point = [0.5, 0.0]
         self.discharging_station = [-1.0, 0.0]
+
+
+
+
+
         self.home = [0.0,0.0]
 
 
@@ -33,6 +39,9 @@ class TestLidarClass(Node):
 
     def recieve_state(self,msg):
         self.bug_state = msg.data
+        if self.bug_state == "stop_robot":
+            self.finish_task = True
+        
     def recieve_command(self,msg):
         self.command = msg.data
 
@@ -51,36 +60,34 @@ class TestLidarClass(Node):
 
     
     def stateMachine(self):
-
+        msg = String()
+        msg.data = self.bug_state
+        self.high_state_pub.publish(msg)
+           
         if self.high_state == "stop" and self.command == "go":
             self.next_state = "go_to_align"
         
-        elif self.high_state == "go_to_align" and self.bug_state == "stop_robot":
+        elif self.high_state == "go_to_align" and self.finish_task == True:
             self.next_state = "grab_box"
         
-        elif self.high_state == "grab_box" and self.bug_state == "stop_robot":
+        elif self.high_state == "grab_box" and self.finish_task == True:
             self.next_state = "go_to_drop"
         
-        elif self.high_state == "go_to_drop" and self.bug_state == "stop_robot":
+        elif self.high_state == "go_to_drop" and self.finish_task == True:
             self.next_state = "go_home"
 
-        elif self.high_state == "go_home" and self.bug_state == "stop_robot":
+        elif self.high_state == "go_home" and self.finish_task == True:
             self.next_state = "stop"
             self.command = "stop"
         
-        if self.command == "stop": self.next_state = "stop"
-            
+        self.finish_task = False
 
-
+        msg = String()
         if self.high_state == "stop":
-                msg = String()
+
                 msg.data = "Stop"
-                self.imperative_pub(msg)
+                self.imperative_pub.publish(msg)
 
-        
-
-        elif self.high_state == "go_to_align":
-            self.publish_point(self.alignment_point,"Go")
 
         elif self.high_state == "go_to_align":
             self.publish_point(self.alignment_point,"Go")
@@ -95,22 +102,15 @@ class TestLidarClass(Node):
         elif self.high_state == "go_home":
             self.publish_point(self.home,"Go")
 
-         
+        msg.data = self.high_state
 
+        self.high_state_pub.publish(msg)
 
 
         if self.high_state != self.next_state:
-            self.point_published = False
             self.high_state = self.next_state
-
-        
-
-
-        
-
-    
- 
- 
+            self.point_published = False
+            return 
         
 def main(args=None):
     rclpy.init(args=args)
