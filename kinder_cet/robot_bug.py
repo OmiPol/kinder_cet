@@ -48,21 +48,17 @@ class BugAlgorithClass(Node):
         #Follow_wall
         self.tolerance_to_target = 0.05
         self.tolerance_to_line = 0.05
-        self.allowed_distance_to_obstacle = 0.30
-        self.histerisis = 0.05
+        self.allowed_distance_to_obstacle = 0.35
+        self.histerisis = 0.07
         #Controller
         self.angP = 0.3
         self.linP = 0.2
         self.linMax = 0.08
         self.angMax = 0.4
         #Follow_wall variables
-        self.Dwall = 0.30     # DISTANCE FOR FOLLOWING THE WALL ON METERS
-
-
-
-
-        self.beta = 0.99
-        self.Kfw = 0.99
+        self.Dwall = 0.35     # DISTANCE FOR FOLLOWING THE WALL ON METERS   
+        self.betha = 0.70
+        self.Kfw = 1.3
         
         #Misc
         self.PointStart = [0.0, 0.0]
@@ -111,11 +107,11 @@ class BugAlgorithClass(Node):
         #}
         self.robotView = {
             'front' : min(min(ranges[0:66]),min(ranges[1014:1080])),
-            'front_right' : min(ranges[800:1013]),
-            'front_left' : min(ranges[67:281]),
-            'right' : min(ranges[742:799]),
+            'front_right' : min(ranges[827:1013]),
+            'front_left' : min(ranges[67:251]),
+            'right' : min(ranges[742:826]),
             'back' : min(ranges[337:741]),
-            'left' : min(ranges[282:336])            
+            'left' : min(ranges[252:336])            
         }
 
     def target_callback(self, msg):
@@ -272,16 +268,19 @@ class BugAlgorithClass(Node):
         norm = math.hypot(Ux_per, Uy_per)
         Ux_per_n, Uy_per_n = Ux_per/norm, Uy_per/norm
 
-        betha, Kfw = 0.55, 0.85
+        
         Ex_per, Ey_per = Ux_per-self.Dwall*Ux_per_n, Uy_per-self.Dwall*Uy_per_n
 
         angle_per = math.atan2(Ey_per, Ex_per)
         angle_tan = math.atan2(Uy_tan_n, Ux_tan_n)
-        fw_angle = betha*angle_tan + (1-betha)*angle_per
+        fw_angle = self.betha*angle_tan + (1-self.betha)*angle_per
         fw_angle = math.atan2(math.sin(fw_angle), math.cos(fw_angle))
 
-        v = 0.05 if abs(fw_angle) > 0.1 else 0.1
-        w = Kfw*fw_angle
+        if abs(fw_angle) > 0.1:
+            v = 0.01
+        else:
+            v = 0.07
+        w = self.Kfw*fw_angle
         self.move_robot(v, w)
 
     def align_aruco(self):
@@ -331,7 +330,7 @@ class BugAlgorithClass(Node):
             self.robotView.get("front_right"),
         ]
         
-        return min(readings) <= self.allowed_distance_to_obstacle - self.histerisis
+        return min(readings) <= self.allowed_distance_to_obstacle 
 
     def isObstacleCleared(self):
         return self.robotView.get("front") > self.allowed_distance_to_obstacle + self.histerisis
