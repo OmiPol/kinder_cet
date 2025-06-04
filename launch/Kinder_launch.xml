@@ -13,14 +13,20 @@
  
  
  <node pkg="kinder_cet" exec="move_bot">
- <param name="use_sim_time" value="true"/>
-
+     <param name="use_sim_time" value="true"/>
  </node> 
 
  <node pkg="kinder_cet" exec="move_ghost"/> 
- <!--node pkg="kinder_cet" exec="robug"/-->  
- <node pkg="kinder_cet" exec="odomc"/> 
-  
+
+ <node pkg="kinder_cet" exec="robug"/>  
+
+ <node pkg="kinder_cet" exec="odomc">
+     <param name="use_sim_time" value = "true"/>
+ </node>
+
+ <node pkg="aruco_opencv" exec="aruco_tracker_autostart" args="--ros-args -p marker_size:=0.14 -p marker_dict:=4X4_250 -r camera/image_raw:=/camera -r camera/camera_info:=/camera_info"/>
+
+<node pkg="rviz2" exec="rviz2" args= "-d /home/omar//Documents/ghosts.rviz"/>
  
 
 </launch>

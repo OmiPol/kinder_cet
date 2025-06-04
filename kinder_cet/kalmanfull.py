@@ -61,8 +61,10 @@ class OdometryNode(Node):
         self.kr = 0.1351 #self.kr = 0.1351
 
         #Time variables
-        self.tin = time.time()
-        self.tfin = time.time()
+        self.now = self.get_clock().now().seconds_nanoseconds()
+        self.tin = self.now[0] + self.now[1] * 1e-9
+
+        self.tfin = self.tin
 
         #Variables de velocidad de llantas y velocidad linear
         self.vel = 0.0
@@ -75,7 +77,7 @@ class OdometryNode(Node):
         
         self.arucodict = {
             #0:  [1.75, 2.0],
-            1:  [-1.153, 0.15],
+            1:  [-1.53, 0.15],
             2:  [1.435, -0.15],
             3:  [0.0, -1.03],
             4:  [0.0, 1.03],
@@ -112,7 +114,8 @@ class OdometryNode(Node):
 
 
     def odometry_callback(self):
-        self.tfin = time.time()
+        self.now = self.get_clock().now().seconds_nanoseconds()
+        self.tfin = self.now[0] + self.now[1] * 1e-9
         delta = self.tfin - self.tin
         self.tin = self.tfin
 
