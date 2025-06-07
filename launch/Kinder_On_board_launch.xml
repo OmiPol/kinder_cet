@@ -6,7 +6,7 @@
  <node pkg="kinder_cet" exec="robug"/>  
  <node pkg="kinder_cet" exec="odomc"/> 
  <node pkg="aruco_opencv" exec="aruco_tracker_autostart" args="--ros-args -p marker_size:=0.049 -p marker_dict:=4X4_250 -r camera/image_raw:=/video_source/raw -r camera/camera_info:=/camera_info"/>
- 
+
   
  
 

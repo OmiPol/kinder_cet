@@ -206,41 +206,7 @@ class BugAlgorithClass(Node):
             
             self.first_time_flag = False
         
-        """ if direction == "left":
-            r1,t1 = self.robotView.get("left"), math.radians(90)
-            r2,t2 = self.robotView.get("front_left"), math.radians(45)
-        
-        else: 
-            r1,t1 = self.robotView.get("right"), math.radians(-90)
-            r2,t2 = self.robotView.get("front_right"), math.radians(-45)
 
-        P1 = [r1 * math.cos(t1), r1 * math.sin(t1)]
-        P2 = [r2 * math.cos(t2), r2 * math.sin(t2)]
-        Tan = [P2[0] - P1[0], P2[1] - P1[1]]
-        hypTan = math.hypot(Tan[0], Tan[1])
-        NormTan = [Tan[0]/hypTan, Tan[1]/hypTan]
-        #Calcular U perpendicualr
-        dot = P1[0] * NormTan[0] + P1[1] * NormTan[1]
-        Uper = [P1[0] - dot * NormTan[0], P1[1] - dot * NormTan[1]]
-        #Calcular vector unitario de uper
-        hypPer = math.hypot(Uper[0], Uper[1])
-        NormPer = [Uper[0]/hypPer, Uper[1]/hypPer]
-        
-        #Calcular follow wall angle
-        E_per = [Uper[0]-self.Dwall*NormPer[0], Uper[1]-self.Dwall*NormPer[1]]
-        angle_per = math.atan2(E_per[1],E_per[0])
-        angle_tan = math.atan2(NormTan[1], NormTan[0])
-        fw_angle = self.beta * angle_tan + (1 - self.beta) * angle_per
-        fw_angle = math.atan2(math.sin(fw_angle), math.cos(fw_angle)) #obtener distancia mas corta del angulo
-        #v = 0.1 if abs(fw_angle) > 0.1 else 0.04
-        if abs(fw_angle) > 0.1:
-            v = 0.04
-        else:
-            v = 0.1
-        w = self.Kfw * fw_angle
-        msg = String()
-        msg.data = "Error to wall: " + str(E_per) + " fw_angle: " + str(fw_angle)
-        self.move_robot(v,w) """
 
         if self.first_time_flag == True: print("Follow wall")
         self.first_time_flag = False
